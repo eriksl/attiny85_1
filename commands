@@ -1,0 +1,42 @@
+bit		7	6	5	4	3		2	1	0
+
+
+		0	0	0	0	0						0x00	command 0
+		...
+		1	1	1	1	1						0xF8	command 31
+
+								0	0	0		0x00	i/o 0
+								...
+								1	1	1		0x07	i/o 7
+
+		0	0	0	0	0		0	0	0		0x00	identify, returns: 0x4a 0xfb AA BB 10*CC DD where AA=numeric id, BB=version, CC=ascii id string, DD = checksum
+		0	0	0	0	0		0	0	1		0x01	long command, reset follows after this byte
+
+		0	0	0	1	0						0x10	read counter, returns: AA BB CC DD EE where AA is msb, BB, CC, DD is lsb, EE = checksum
+		0	0	1	0	0						0x20	write counter, supply: AA BB CC DD where AA is msb, DD = lsb
+		0	0	1	1	0						0x30	reset counter
+		0	1	0	0	0						0x40	read/reset counter, returns like read counter
+
+		0	1	0	1	0						0x50	read i/o, returns: 0/1 1/0 (value / complementary value)
+		0	1	1	0	0						0x60	set i/o, supply: 0/1
+
+		0	1	1	1	0						0x70	read pwm value, returns: AA BB CC, where AA is msb, BB = lsb, CC = checksum
+		1	0	0	0	0						0x80	set pwm value, supply: AA BB where AA is msb, BB = lsb
+
+		1	0	0	1	0						0x90	read pwm mode, returns AA BB, where AA = mode, BB = checksum
+		1	0	1	0	0						0xa0	set pwm mode, supply AA
+
+		1	0	1	1	0						0xb0	read adc, returns AA BB CC, where AA = msb, BB = lsb, CC = checksum
+
+
+pwm mode =
+		0	on
+		1	fade in
+		2	fade out
+		3	fade in/out
+
+model 6 (attiny861a), version 0
+
+		0x00	identify
+
+		0x60	set i/o
