@@ -1,9 +1,25 @@
 #!/bin/zsh
 
 timeout=0.001
-flushcount=10
+flushcount=2
 
 exec 6<> /dev/ttyUSB1
+
+function flush ()
+{
+	for ((flush = 0; flush < flushcount; flush++))
+	do
+		read -A -t $timeout reply <&6
+
+		if [ -n "${reply[*]}" ]
+		then
+			if [ ${reply[1]} != "FD" ]
+			then
+				echo "${reply[*]}"
+			fi
+		fi
+	done
+}
 
 while true
 do
@@ -12,23 +28,12 @@ do
 		command="6${io}"
 
 		echo "s 04 ${command} 01 p" >&6
+		flush
 		echo "s 05 04 p" >&6
-
-		for ((flush = 0; flush < flushcount; flush++))
-		do
-			read -t $timeout reply <&6
-
-			[ -n "$reply" ] && echo $reply
-		done
-
+		flush
 		echo "s 04 ${command} 00 p" >&6
+		flush
 		echo "s 05 04 p" >&6
-
-		for ((flush = 0; flush < flushcount; flush++))
-		do
-			read -t $timeout reply <&6
-
-			[ -n "$reply" ] && echo $reply
-		done
+		flush
 	done
 done
