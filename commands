@@ -15,7 +15,7 @@
 									1	1	1		0x07	i/o 7
 
 			0	0	0	0	0		0	0	0		0x00	identify, returns: 0x4a 0xfb AA BB 5*CC DD where AA=numeric device id, BB=firmware version, CC=ascii id string, DD = checksum
-			0	0	0	0	0		0	0	1		0x01	long command, reset follows after this byte
+			0	0	0	0	0		0	0	1		0x01	long command, rest follows after this byte
 
 			0	0	0	1	0						0x10	read counter, returns: AA BB CC DD EE where AA is msb, BB, CC, DD is lsb, EE = checksum
 			0	0	1	0	0						0x20	write counter, supply: AA BB CC DD where AA is msb, DD = lsb
@@ -33,6 +33,15 @@
 
 			1	0	1	1	0						0xb0	start adc conversion
 			1	1	0	0	0		0	0	0		0xc0	read adc, returns AA BB, where AA = msb, BB = lsb
+
+			1	1	0	1	0		0	0	0		0xd0	twi stats - disable
+			1	1	0	1	0		0	0	1		0xd1	twi stats - enable
+			1	1	0	1	0		0	1	0		0xd2	twi stats - read start conditions		returns AA BB as msb lsb.
+			1	1	0	1	0		0	1	1		0xd3	twi stats - read stop conditions		returns AA BB as msb lsb.
+			1	1	0	1	0		1	0	0		0xd4	twi stats - read error conditions		returns AA BB as msb lsb.
+			1	1	0	1	0		1	0	1		0xd5	twi stats - read overflow conditions	returns AA BB as msb lsb.
+			1	1	0	1	0		1	1	0		0xd6	twi stats - read local frames			returns AA BB as msb lsb.
+			1	1	0	1	0		1	1	1		0xd7	twi stats - read idle calls				returns AA BB as msb lsb.
 
 	pwm mode =
 			0	on
