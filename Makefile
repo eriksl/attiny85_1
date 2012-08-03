@@ -6,6 +6,7 @@ UTSLDLIB	=		-lusitwislave
 
 MCU			=		attiny861
 PROGRAMMER	=		dragon_isp
+#PROGRAMMER	=		dragon_pp
 PRGFLAGS	=		-b 0 -P usb
 
 PROGRAM		=		twimain
@@ -38,7 +39,7 @@ $(HEXFILE):			$(ELFFILE)
 					avr-objcopy -j .text -j .data -O ihex $< $@
 
 program:			$(HEXFILE)
-					avrdude -qq -c $(PROGRAMMER) -p $(MCU) $(PRGFLAGS) -U flash:w:$^
+					avrdude -v -c $(PROGRAMMER) -p $(MCU) $(PRGFLAGS) -U flash:w:$^
 
 clean:			
 					@echo rm $(OBJFILES) $(ELFFILE) $(HEXFILE)

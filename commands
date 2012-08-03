@@ -1,42 +1,71 @@
-bit		7	6	5	4	3		2	1	0
+*** COMMANDS ***
+
+	byte	command (see below)
+	byte*	arguments
+
+	bit		7	6	5	4	3		2	1	0
 
 
-		0	0	0	0	0						0x00	command 0
-		...
-		1	1	1	1	1						0xF8	command 31
+			0	0	0	0	0						0x00	command 0
+			...
+			1	1	1	1	1						0xf8	command 31
 
-								0	0	0		0x00	i/o 0
-								...
-								1	1	1		0x07	i/o 7
+									0	0	0		0x00	i/o 0
+									...
+									1	1	1		0x07	i/o 7
 
-		0	0	0	0	0		0	0	0		0x00	identify, returns: 0x4a 0xfb AA BB 10*CC DD where AA=numeric id, BB=version, CC=ascii id string, DD = checksum
-		0	0	0	0	0		0	0	1		0x01	long command, reset follows after this byte
+			0	0	0	0	0		0	0	0		0x00	identify, returns: 0x4a 0xfb AA BB 5*CC DD where AA=numeric device id, BB=firmware version, CC=ascii id string, DD = checksum
+			0	0	0	0	0		0	0	1		0x01	long command, reset follows after this byte
 
-		0	0	0	1	0						0x10	read counter, returns: AA BB CC DD EE where AA is msb, BB, CC, DD is lsb, EE = checksum
-		0	0	1	0	0						0x20	write counter, supply: AA BB CC DD where AA is msb, DD = lsb
-		0	0	1	1	0						0x30	reset counter
-		0	1	0	0	0						0x40	read/reset counter, returns like read counter
+			0	0	0	1	0						0x10	read counter, returns: AA BB CC DD EE where AA is msb, BB, CC, DD is lsb, EE = checksum
+			0	0	1	0	0						0x20	write counter, supply: AA BB CC DD where AA is msb, DD = lsb
+			0	0	1	1	0						0x30	reset counter
+			0	1	0	0	0						0x40	read/reset counter, returns like read counter
 
-		0	1	0	1	0						0x50	read i/o, returns: 0/1 1/0 (value / complementary value)
-		0	1	1	0	0						0x60	set i/o, supply: 0/1
+			0	1	0	1	0						0x50	read i/o, returns: 0/1 1/0 (value / complementary value)
+			0	1	1	0	0						0x60	set i/o, supply: 0/1
 
-		0	1	1	1	0						0x70	read pwm value, returns: AA BB CC, where AA is msb, BB = lsb, CC = checksum
-		1	0	0	0	0						0x80	set pwm value, supply: AA BB where AA is msb, BB = lsb
+			0	1	1	1	0						0x70	read pwm value, returns: AA BB CC, where AA is msb, BB = lsb, CC = checksum
+			1	0	0	0	0						0x80	set pwm value, supply: AA BB where AA is msb, BB = lsb
 
-		1	0	0	1	0						0x90	read pwm mode, returns AA BB, where AA = mode, BB = checksum
-		1	0	1	0	0						0xa0	set pwm mode, supply AA
+			1	0	0	1	0						0x90	read pwm mode, returns AA BB, where AA = mode, BB = checksum
+			1	0	1	0	0						0xa0	set pwm mode, supply AA
 
-		1	0	1	1	0						0xb0	read adc, returns AA BB CC, where AA = msb, BB = lsb, CC = checksum
+			1	0	1	1	0						0xb0	start adc conversion
+			1	1	0	0	0		0	0	0		0xc0	read adc, returns AA BB, where AA = msb, BB = lsb
 
+	pwm mode =
+			0	on
+			1	fade in
+			2	fade out
+			3	fade in/out
 
-pwm mode =
-		0	on
-		1	fade in
-		2	fade out
-		3	fade in/out
+*** REPLY ***
+	
+	byte	length of reply
+	byte	command this reply relates to
+	byte	command this reply relates to (repeat)
+	byte	error code
+	byte*	reply information
+	byte	checksum
 
-model 6 (attiny861a), version 0
+	error codes =
+			0	ok
+			1	no command
+			2	unknown command
+			3	parameter out of range
+			4	missing parameter(s)
+			5	not ready
 
-		0x00	identify
+*** MODELS ***
 
-		0x60	set i/o
+	model 6 (attiny861a), version 0
+
+			0x00	identify
+			0x10	read counter			0=portb, 1=porta
+			0x20	set counter				0=portb, 1=porta
+			0x30	reset counter			0=portb, 1=porta
+			0x40	read/reset counter		0=portb, 1=porta
+			0x60	set i/o					0=b3,1=b4,2=a3,2=a4
+			0xb0	start adc conversion	0=pa7=adc6, 1=temp
+			0xc0	read adc
