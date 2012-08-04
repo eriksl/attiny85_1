@@ -143,10 +143,7 @@ static void twi_callback(uint8_t buffer_size, volatile uint8_t input_buffer_leng
 	//PORTB |= 0x08;
 	
 	if(input_buffer_length < 1)
-	{
-		build_reply(output_buffer_length, output_buffer, 0, 1, 0, 0);
-		return;
-	}
+		return(build_reply(output_buffer_length, output_buffer, 0, 1, 0, 0));
 
 	input	= input_buffer[0];
 	command	= input & 0xf8;
@@ -165,8 +162,7 @@ static void twi_callback(uint8_t buffer_size, volatile uint8_t input_buffer_leng
 					't', '8', '6', '1', 'a'
 				};
 
-				build_reply(output_buffer_length, output_buffer, input, 0, sizeof(replystring), replystring);
-				return;
+				return(build_reply(output_buffer_length, output_buffer, input, 0, sizeof(replystring), replystring));
 			}
 
 			break;
@@ -199,8 +195,7 @@ static void twi_callback(uint8_t buffer_size, volatile uint8_t input_buffer_leng
 
 				default:
 				{
-					build_reply(output_buffer_length, output_buffer, input, 3, 0, 0);
-					return;
+					return(build_reply(output_buffer_length, output_buffer, input, 3, 0, 0));
 				}
 			}
 
@@ -211,8 +206,7 @@ static void twi_callback(uint8_t buffer_size, volatile uint8_t input_buffer_leng
 			replystring[2] = (counter & 0x0000ff00) >> 8;
 			replystring[3] = (counter & 0x000000ff) >> 0;
 
-			build_reply(output_buffer_length, output_buffer, input, 0, sizeof(replystring), replystring);
-			return;
+			return(build_reply(output_buffer_length, output_buffer, input, 0, sizeof(replystring), replystring));
 		}
 
 		case(0x20):	// write counter
@@ -220,10 +214,7 @@ static void twi_callback(uint8_t buffer_size, volatile uint8_t input_buffer_leng
 			uint32_t counter;
 
 			if(input_buffer_length < 5)
-			{
-				build_reply(output_buffer_length, output_buffer, input, 4, 0, 0);
-				return;
-			}
+				return(build_reply(output_buffer_length, output_buffer, input, 4, 0, 0));
 
 			counter = input_buffer[1];
 			counter <<= 8;
@@ -249,13 +240,11 @@ static void twi_callback(uint8_t buffer_size, volatile uint8_t input_buffer_leng
 
 				default:
 				{
-					build_reply(output_buffer_length, output_buffer, input, 3, 0, 0);
-					return;
+					return(build_reply(output_buffer_length, output_buffer, input, 3, 0, 0));
 				}
 			}
 
-			build_reply(output_buffer_length, output_buffer, input, 0, 0, 0);
-			return;
+			return(build_reply(output_buffer_length, output_buffer, input, 0, 0, 0));
 		}
 
 		case(0x30):	// reset counter
@@ -276,22 +265,68 @@ static void twi_callback(uint8_t buffer_size, volatile uint8_t input_buffer_leng
 
 				default:
 				{
-					build_reply(output_buffer_length, output_buffer, input, 3, 0, 0);
-					return;
+					return(build_reply(output_buffer_length, output_buffer, input, 3, 0, 0));
 				}
 			}
 
-			build_reply(output_buffer_length, output_buffer, input, 0, 0, 0);
-			return;
+			return(build_reply(output_buffer_length, output_buffer, input, 0, 0, 0));
 		}
 
-		case(0x60):
+		case(0x50):	//	read i/o
+		{
+			uint8_t value;
+
+			switch(io)
+			{
+				case(0x00):
+				{
+					value = !!(PINB & _BV(PB6));
+					break;
+				}
+
+				case(0x01):
+				{
+					value = !!(PINA & _BV(PA6));
+					break;
+				}
+
+				case(0x02):
+				{
+					value = !!(PINB & _BV(PB3));
+					break;
+				}
+
+				case(0x03):
+				{
+					value = !!(PINB & _BV(PB4));
+					break;
+				}
+
+				case(0x04):
+				{
+					value = !!(PINA & _BV(PA3));
+					break;
+				}
+
+				case(0x05):
+				{
+					value = !!(PINA & _BV(PA4));
+					break;
+				}
+
+				default:
+				{
+					return(build_reply(output_buffer_length, output_buffer, input, 3, 0, 0));
+				}
+			}
+
+			return(build_reply(output_buffer_length, output_buffer, input, 0, 1, &value));
+		}
+
+		case(0x60):	//	set i/o
 		{
 			if(input_buffer_length < 2)
-			{
-				build_reply(output_buffer_length, output_buffer, input, 4, 0, 0);
-				return;
-			}
+				return(build_reply(output_buffer_length, output_buffer, input, 4, 0, 0));
 
 			value = input_buffer[1];
 
@@ -339,13 +374,11 @@ static void twi_callback(uint8_t buffer_size, volatile uint8_t input_buffer_leng
 
 				default:
 				{
-					build_reply(output_buffer_length, output_buffer, input, 3, 0, 0);
-					return;
+					return(build_reply(output_buffer_length, output_buffer, input, 3, 0, 0));
 				}
 			}
 
-			build_reply(output_buffer_length, output_buffer, input, 0, 0, 0);
-			return;
+			return(build_reply(output_buffer_length, output_buffer, input, 0, 0, 0));
 		}
 
 		case(0xb0):	// start adc conversion
@@ -416,13 +449,11 @@ static void twi_callback(uint8_t buffer_size, volatile uint8_t input_buffer_leng
 
 				default:
 				{
-					build_reply(output_buffer_length, output_buffer, input, 3, 0, 0);
-					return;
+					return(build_reply(output_buffer_length, output_buffer, input, 3, 0, 0));
 				}
 			}
 
-			build_reply(output_buffer_length, output_buffer, input, 0, 0, 0);
-			return;
+			return(build_reply(output_buffer_length, output_buffer, input, 0, 0, 0));
 		}
 
 		case(0xc0):	// read adc
@@ -439,16 +470,12 @@ static void twi_callback(uint8_t buffer_size, volatile uint8_t input_buffer_leng
 
 				default:
 				{
-					build_reply(output_buffer_length, output_buffer, input, 2, 0, 0);
-					return;
+					return(build_reply(output_buffer_length, output_buffer, input, 2, 0, 0));
 				}
 			}
 
 			if(ADCSRA & _BV(ADSC))	// conversion not ready
-			{
-				build_reply(output_buffer_length, output_buffer, input, 5, 0, 0);
-				return;
-			}
+				return(build_reply(output_buffer_length, output_buffer, input, 5, 0, 0));
 
 			reset_adc();
 
@@ -457,18 +484,78 @@ static void twi_callback(uint8_t buffer_size, volatile uint8_t input_buffer_leng
 			replystring[0] = (value & 0xff00) >> 8;
 			replystring[1] = (value & 0x00ff) >> 0;
 
-			build_reply(output_buffer_length, output_buffer, input, 0, sizeof(replystring), replystring);
-			return;
+			return(build_reply(output_buffer_length, output_buffer, input, 0, sizeof(replystring), replystring));
+		}
+
+		case(0xd0):	// twi stats
+		{
+			uint8_t		replystring[2];
+			uint16_t	stats;
+
+			switch(io)
+			{
+				case(0x00):	//	disable
+				{
+					usi_twi_enable_stats(0);
+					return(build_reply(output_buffer_length, output_buffer, input, 0, 0, 0));
+				}
+
+				case(0x01):	//	enable
+				{
+					usi_twi_enable_stats(1);
+					return(build_reply(output_buffer_length, output_buffer, input, 0, 0, 0));
+				}
+
+				case(0x02):	//	read start conditions
+				{
+					stats = usi_twi_stats_start_conditions();
+					break;
+				}
+
+				case(0x03):	//	read stop conditions
+				{
+					stats = usi_twi_stats_stop_conditions();
+					break;
+				}
+
+				case(0x04):	//	read error conditions
+				{
+					stats = usi_twi_stats_error_conditions();
+					break;
+				}
+
+				case(0x05):	//	read overflow conditions
+				{
+					stats = usi_twi_stats_overflow_conditions();
+					break;
+				}
+
+				case(0x06):	//	read local frames
+				{
+					stats = usi_twi_stats_local_frames();
+					break;
+				}
+
+				case(0x07):	//	read idle calls
+				{
+					stats = usi_twi_stats_idle_calls();
+					break;
+				}
+			}
+
+			replystring[0] = (stats & 0xff00) >> 8;
+			replystring[1] = (stats & 0x00ff) >> 0;
+
+			return(build_reply(output_buffer_length, output_buffer, input, 0, sizeof(replystring), replystring));
 		}
 
 		default:
 		{
-			build_reply(output_buffer_length, output_buffer, input, 2, 0, 0);
-			return;
+			return(build_reply(output_buffer_length, output_buffer, input, 2, 0, 0));
 		}
 	}
 
-	build_reply(output_buffer_length, output_buffer, input, 5, 0, 0);
+	return(build_reply(output_buffer_length, output_buffer, input, 5, 0, 0));
 }
 
 static void twi_idle()

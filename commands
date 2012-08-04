@@ -71,10 +71,19 @@
 	model 6 (attiny861a), version 0
 
 			0x00	identify
-			0x10	read counter			0=portb, 1=porta
-			0x20	set counter				0=portb, 1=porta
-			0x30	reset counter			0=portb, 1=porta
-			0x40	read/reset counter		0=portb, 1=porta
-			0x60	set i/o					0=b3,1=b4,2=a3,2=a4
-			0xb0	start adc conversion	0=pa7=adc6, 1=temp
+			0x1x	read counter			x:0=b6, 1=a6
+			0x2x	set counter				x:0=b6, 1=a6
+			0x3x	reset counter			x:0=b6, 1=a6
+			0x4x	read/reset counter		x:0=b6, 1=a6
+			0x5x	read i/o				x:0=b6, 1=a6, 2=b3, 3=b4, 4=a3, 5=a4
+			0x6x	set i/o					x:0=b3, 1=b4, 2=a3, 2=a4
+			0xbx	start adc conversion	x:0=pa7=adc6, 1=temp
 			0xc0	read adc
+			0xd0	twi stats - disable
+			0xd1	twi stats - enable
+			0xd2	twi stats - read start conditions
+			0xd3	twi stats - read stop conditions
+			0xd4	twi stats - read error conditions
+			0xd5	twi stats - read overflow conditions
+			0xd6	twi stats - read local frames
+			0xd7	twi stats - read idle calls
