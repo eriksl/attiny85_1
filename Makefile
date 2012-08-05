@@ -18,12 +18,13 @@ CFLAGS		=		-Wall -Winline -Os -g -mmcu=$(MCU) -DF_CPU=8000000UL -I$(UTSBASE)
 LD1FLAGS	=		-Wall -mmcu=$(MCU) -L$(UTSBASE) 
 LD2FLAGS	=		$(UTSLDLIB)
 
-.PHONY:				all clean library
+.PHONY:				all clean hex
 .SUFFIXES:
 .SUFFIXES:			.c .o .elf .hex
 .PRECIOUS:			.c .h
 
 all:				$(PROGRAMMED)
+hex:				$(HEXFILE)
 
 $(PROGRAM).o:		$(PROGRAM).c $(HEADERS)
 

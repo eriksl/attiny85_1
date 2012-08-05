@@ -36,3 +36,9 @@ const ioport_t pwm_ports[PWM_PORTS] =
 	{ &PORTA, 3 },
 	{ &PORTA, 4 }
 };
+
+counterport_t counter_ports[COUNTER_PORTS] =
+{
+	{ &PINB, 6, 0},
+	{ &PINA, 6, 0 }
+};

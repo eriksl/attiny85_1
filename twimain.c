@@ -23,34 +23,38 @@ static volatile uint8_t pwm_value[PWM_PORTS] = { 128, 128, 128, 128 };
 
 ISR(PCINT_vect)
 {
-	if(!(PINA & _BV(PA6)) && !(PINB & _BV(PB6)))
-	{
-		porta_count = 0;
-		portb_count = 0;
+	uint8_t port[2];
 
+	port[0] = (*counter_ports[0].port) & _BV(counter_ports[0].bit);
+	port[1] = (*counter_ports[1].port) & _BV(counter_ports[1].bit);
+
+	if(!port[0] && !port[1])
+	{
+		counter_ports[0].counter = 0;
+		counter_ports[1].counter = 0;
 		return;
 	}
 
 	uint8_t pv = pwm_value[0];
 
-	if(!(PINA & _BV(PA6)))
-	{
-		if(pv < 248)
-			pv += 8;
-		else
-			pv = 255;
-
-		porta_count++;
-	}
-
-	if(!(PINB & _BV(PB6)))
+	if(!port[0])
 	{
 		if(pv > 8)
 			pv -= 8;
 		else
 			pv = 0;
 
-		portb_count++;
+		counter_ports[0].counter++;
+	}
+
+	if(!port[1])
+	{
+		if(pv < 248)
+			pv += 8;
+		else
+			pv = 255;
+
+		counter_ports[1].counter++;
 	}
 
 	pwm_value[0] = pv;
@@ -130,36 +134,20 @@ static void twi_callback(uint8_t buffer_size, volatile uint8_t input_buffer_leng
 			break;
 		}
 
-		case(0x10):	// 0x10 = read counter, 0x40 = read/reset counter
-		case(0x40):
+		case(0x10):	// 0x10 read counter
+		case(0x30):	// 0x30 reset counter
+		case(0x40): // 0x40 read / reset counter
 		{
-			uint8_t clear = (command == 0x40);
+			if(io >= COUNTER_PORTS)
+				return(build_reply(output_buffer_length, output_buffer, input, 3, 0, 0));
 
-			uint32_t counter;
+			uint32_t counter = counter_ports[io].counter;
 
-			switch(io)
-			{
-				case(0x00):
-				{
-					counter = portb_count;
-					if(clear)
-						portb_count = 0;
-					break;
-				}
+			if(command != 0x10)
+				counter_ports[io].counter = 0;
 
-				case(0x01):
-				{
-					counter = porta_count;
-					if(clear)
-						porta_count = 0;
-					break;
-				}
-
-				default:
-				{
-					return(build_reply(output_buffer_length, output_buffer, input, 3, 0, 0));
-				}
-			}
+			if(command == 0x30)
+				return(build_reply(output_buffer_length, output_buffer, input, 0, 0, 0));
 
 			uint8_t replystring[4];
 
@@ -173,10 +161,13 @@ static void twi_callback(uint8_t buffer_size, volatile uint8_t input_buffer_leng
 
 		case(0x20):	// write counter
 		{
-			uint32_t counter;
-
 			if(input_buffer_length < 5)
 				return(build_reply(output_buffer_length, output_buffer, input, 4, 0, 0));
+
+			if(io >= COUNTER_PORTS)
+				return(build_reply(output_buffer_length, output_buffer, input, 3, 0, 0));
+
+			uint32_t counter;
 
 			counter = input_buffer[1];
 			counter <<= 8;
@@ -186,50 +177,7 @@ static void twi_callback(uint8_t buffer_size, volatile uint8_t input_buffer_leng
 			counter <<= 8;
 			counter |= input_buffer[4];
 
-			switch(io)
-			{
-				case(0x00):
-				{
-					portb_count = counter;
-					break;
-				}
-
-				case(0x01):
-				{
-					porta_count = counter;
-					break;
-				}
-
-				default:
-				{
-					return(build_reply(output_buffer_length, output_buffer, input, 3, 0, 0));
-				}
-			}
-
-			return(build_reply(output_buffer_length, output_buffer, input, 0, 0, 0));
-		}
-
-		case(0x30):	// reset counter
-		{
-			switch(io)
-			{
-				case(0x00):
-				{
-					portb_count = 0;
-					break;
-				}
-
-				case(0x01):
-				{
-					porta_count = 0;
-					break;
-				}
-
-				default:
-				{
-					return(build_reply(output_buffer_length, output_buffer, input, 3, 0, 0));
-				}
-			}
+			counter_ports[io].counter = counter;
 
 			return(build_reply(output_buffer_length, output_buffer, input, 0, 0, 0));
 		}
@@ -271,16 +219,27 @@ static void twi_callback(uint8_t buffer_size, volatile uint8_t input_buffer_leng
 			return(build_reply(output_buffer_length, output_buffer, input, 0, 0, 0));
 		}
 
-		case(0xc0):	// read adc
+		case(0xc0):	// misc
 		{
 			uint16_t value;
 
 			switch(io)
 			{
-				case(0x00):
+				case(0x00):	// read ADC
 				{
 					value = ADCW;
-					break;
+
+					if(ADCSRA & _BV(ADSC))	// conversion not ready
+						return(build_reply(output_buffer_length, output_buffer, input, 5, 0, 0));
+
+					adc_stop();
+
+					uint8_t replystring[2];
+
+					replystring[0] = (value & 0xff00) >> 8;
+					replystring[1] = (value & 0x00ff) >> 0;
+
+					return(build_reply(output_buffer_length, output_buffer, input, 0, sizeof(replystring), replystring));
 				}
 
 				default:
@@ -289,17 +248,7 @@ static void twi_callback(uint8_t buffer_size, volatile uint8_t input_buffer_leng
 				}
 			}
 
-			if(ADCSRA & _BV(ADSC))	// conversion not ready
-				return(build_reply(output_buffer_length, output_buffer, input, 5, 0, 0));
-
-			adc_stop();
-
-			uint8_t replystring[2];
-
-			replystring[0] = (value & 0xff00) >> 8;
-			replystring[1] = (value & 0x00ff) >> 0;
-
-			return(build_reply(output_buffer_length, output_buffer, input, 0, sizeof(replystring), replystring));
+			return(build_reply(output_buffer_length, output_buffer, input, 2, 0, 0));
 		}
 
 		case(0xd0):	// twi stats
@@ -390,9 +339,9 @@ int main(void)
 	DDRA = _BV(DDA3) | _BV(DDA4);
 	DDRB = _BV(DDB3) | _BV(DDB4);
 
-	PCMSK0 = _BV(PCINT6);
-	PCMSK1 = _BV(PCINT14);
-	GIMSK  = _BV(PCIE1);
+	PCMSK0 = _BV(PCINT6);	//	PCINT on pa6
+	PCMSK1 = _BV(PCINT14);	//	PCINT on pb6
+	GIMSK  = _BV(PCIE1);	//	enabe PCINT
 
 	PRR =		(0 << 7)		|
 				(0 << 6)		|	// reserved
