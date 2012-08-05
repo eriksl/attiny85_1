@@ -14,22 +14,22 @@
 									...
 									1	1	1		0x07	i/o 7
 
-			0	0	0	0	0		0	0	0		0x00	identify, returns: 0x4a 0xfb AA BB 5*CC DD where AA=numeric device id, BB=firmware version, CC=ascii id string, DD = checksum
+			0	0	0	0	0		0	0	0		0x00	identify, returns: 0x4a 0xfb AA BB 5*CC DD where AA=numeric device id, BB=firmware version, CC=ascii id string
 			0	0	0	0	0		0	0	1		0x01	long command, rest follows after this byte
 
-			0	0	0	1	0						0x10	read counter, returns: AA BB CC DD EE where AA is msb, BB, CC, DD is lsb, EE = checksum
-			0	0	1	0	0						0x20	write counter, supply: AA BB CC DD where AA is msb, DD = lsb
+			0	0	0	1	0						0x10	read counter, returns 4 bytes
+			0	0	1	0	0						0x20	write counter, supply 4 bytes
 			0	0	1	1	0						0x30	reset counter
 			0	1	0	0	0						0x40	read/reset counter, returns like read counter
 
-			0	1	0	1	0						0x50	read i/o, returns: 0/1 1/0 (value / complementary value)
-			0	1	1	0	0						0x60	set i/o, supply: 0/1
+			0	1	0	1	0						0x50	read input, returns 1 byte
+			0	1	1	0	0						0x60	write output, supply 1 byte
 
-			0	1	1	1	0						0x70	read pwm value, returns: AA BB CC, where AA is msb, BB = lsb, CC = checksum
-			1	0	0	0	0						0x80	set pwm value, supply: AA BB where AA is msb, BB = lsb
+			0	1	1	1	0						0x70	read pwm value, returns 1 byte
+			1	0	0	0	0						0x80	write pwm value, supply 1 byte
 
-			1	0	0	1	0						0x90	read pwm mode, returns AA BB, where AA = mode, BB = checksum
-			1	0	1	0	0						0xa0	set pwm mode, supply AA
+			1	0	0	1	0						0x90	read pwm mode, returns 1 byte
+			1	0	1	0	0						0xa0	write pwm mode, supply 1 byte
 
 			1	0	1	1	0						0xb0	start adc conversion
 			1	1	0	0	0		0	0	0		0xc0	read adc, returns AA BB, where AA = msb, BB = lsb
@@ -42,6 +42,8 @@
 			1	1	0	1	0		1	0	1		0xd5	twi stats - read overflow conditions	returns AA BB as msb lsb.
 			1	1	0	1	0		1	1	0		0xd6	twi stats - read local frames			returns AA BB as msb lsb.
 			1	1	0	1	0		1	1	1		0xd7	twi stats - read idle calls				returns AA BB as msb lsb.
+
+			1	1	1	0	0						0xe0	read output, returns 1 byte
 
 	pwm mode =
 			0	on
@@ -68,16 +70,47 @@
 
 *** MODELS ***
 
-	model 6 (attiny861a), version 0
+	MODEL 6 (ATTINY861A), VERSION 0
+
+		counters:
+
+			0	b6
+			1	a6
+
+		inputs:
+
+			0	b6
+			1	a6
+
+		outputs:
+
+			0	b3
+			1	b4
+			2	a3
+			3	a4
+
+		pwms:
+
+			0	b3
+			1	b4
+			2	a3
+			3	a4
+
+		adcs:
+
+			0	a7
+			1	temperature
+
+		commands
 
 			0x00	identify
-			0x1x	read counter			x:0=b6, 1=a6
-			0x2x	set counter				x:0=b6, 1=a6
-			0x3x	reset counter			x:0=b6, 1=a6
-			0x4x	read/reset counter		x:0=b6, 1=a6
-			0x5x	read i/o				x:0=b6, 1=a6, 2=b3, 3=b4, 4=a3, 5=a4
-			0x6x	set i/o					x:0=b3, 1=b4, 2=a3, 2=a4
-			0xbx	start adc conversion	x:0=pa7=adc6, 1=temp
+			0x1x	read counter
+			0x2x	write counter
+			0x3x	reset counter
+			0x4x	read/reset counter
+			0x5x	read input
+			0x6x	write output
+			0xbx	start adc conversion
 			0xc0	read adc
 			0xd0	twi stats - disable
 			0xd1	twi stats - enable
@@ -87,3 +120,4 @@
 			0xd5	twi stats - read overflow conditions
 			0xd6	twi stats - read local frames
 			0xd7	twi stats - read idle calls
+			0xe0	read output				x:0=b3/1=b4/2=a3/3=a4

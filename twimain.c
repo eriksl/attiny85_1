@@ -1,4 +1,4 @@
-#include <inttypes.h>
+#include <stdint.h>
 #include <avr/io.h>
 #include <avr/interrupt.h>
 #include <util/delay.h>
@@ -231,7 +231,6 @@ static void twi_callback(uint8_t buffer_size, volatile uint8_t input_buffer_leng
 	uint8_t input;
 	uint8_t	command;
 	uint8_t	io;
-	uint8_t	value;
 
 	//PORTB |= 0x08;
 	
@@ -365,111 +364,30 @@ static void twi_callback(uint8_t buffer_size, volatile uint8_t input_buffer_leng
 			return(build_reply(output_buffer_length, output_buffer, input, 0, 0, 0));
 		}
 
-		case(0x50):	//	read i/o
+		case(0x50):	//	read input
 		{
 			uint8_t value;
 
-			switch(io)
-			{
-				case(0x00):
-				{
-					value = !!(PINB & _BV(PB6));
-					break;
-				}
+			if(io >= INPUT_PORTS)
+				return(build_reply(output_buffer_length, output_buffer, input, 3, 0, 0));
 
-				case(0x01):
-				{
-					value = !!(PINA & _BV(PA6));
-					break;
-				}
-
-				case(0x02):
-				{
-					value = !!(PINB & _BV(PB3));
-					break;
-				}
-
-				case(0x03):
-				{
-					value = !!(PINB & _BV(PB4));
-					break;
-				}
-
-				case(0x04):
-				{
-					value = !!(PINA & _BV(PA3));
-					break;
-				}
-
-				case(0x05):
-				{
-					value = !!(PINA & _BV(PA4));
-					break;
-				}
-
-				default:
-				{
-					return(build_reply(output_buffer_length, output_buffer, input, 3, 0, 0));
-				}
-			}
+			value = !!(*input_ports[io].port & (1 << input_ports[io].bit));
 
 			return(build_reply(output_buffer_length, output_buffer, input, 0, 1, &value));
 		}
 
-		case(0x60):	//	set i/o
+		case(0x60):	//	write output
 		{
 			if(input_buffer_length < 2)
 				return(build_reply(output_buffer_length, output_buffer, input, 4, 0, 0));
 
-			value = input_buffer[1];
+			if(io >= OUTPUT_PORTS)
+				return(build_reply(output_buffer_length, output_buffer, input, 3, 0, 0));
 
-			switch(io)
-			{
-				case(0x00):
-				{
-					if(value)
-						PORTB |= 0x08;
-					else
-						PORTB &= ~0x08;
-
-					break;
-				}
-
-				case(0x01):
-				{
-					if(value)
-						PORTB |= 0x10;
-					else
-						PORTB &= ~0x10;
-
-					break;
-				}
-
-				case(0x02):
-				{
-					if(value)
-						PORTA |= 0x08;
-					else
-						PORTA &= ~0x08;
-
-					break;
-				}
-
-				case(0x03):
-				{
-					if(value)
-						PORTA |= 0x10;
-					else
-						PORTA &= ~0x10;
-
-					break;
-				}
-
-				default:
-				{
-					return(build_reply(output_buffer_length, output_buffer, input, 3, 0, 0));
-				}
-			}
+			if(input_buffer[1])
+				*output_ports[io].port |= (1 << output_ports[io].bit);
+			else
+				*output_ports[io].port &= ~(1 << output_ports[io].bit);
 
 			return(build_reply(output_buffer_length, output_buffer, input, 0, 0, 0));
 		}
@@ -642,6 +560,18 @@ static void twi_callback(uint8_t buffer_size, volatile uint8_t input_buffer_leng
 			return(build_reply(output_buffer_length, output_buffer, input, 0, sizeof(replystring), replystring));
 		}
 
+		case(0xe0):	//	read output
+		{
+			uint8_t value;
+
+			if(io >= OUTPUT_PORTS)
+				return(build_reply(output_buffer_length, output_buffer, input, 3, 0, 0));
+
+			value = !!(*output_ports[io].port & (1 << output_ports[io].bit));
+
+			return(build_reply(output_buffer_length, output_buffer, input, 0, 1, &value));
+		}
+
 		default:
 		{
 			return(build_reply(output_buffer_length, output_buffer, input, 2, 0, 0));
@@ -669,7 +599,7 @@ int main(void)
 				(0 << PRUSI)	|	// usi
 				(0 << PRADC);		// adc / analog comperator
 
-	init_timer0();
+	//init_timer0();
 
 	//setup_wdt();
 
