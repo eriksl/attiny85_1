@@ -27,7 +27,7 @@ all:				library program
 library:
 					$(MAKE) -C $(UTSBASE) $(UTSLIBNAME)
 
-$(PROGRAM).o:		$(PROGRAM).c $(UTSBASE)/usitwislave.h
+$(PROGRAM).o:		$(PROGRAM).c ioports.h $(UTSBASE)/usitwislave.h
 
 %.o:				%.c
 					avr-gcc -c $(CFLAGS) $< -o $@
