@@ -5,37 +5,27 @@
 
 typedef struct
 {
+	uint8_t	refs[3];
+	uint8_t	mux[6];
+} adcport_t;
+
+typedef struct
+{
 	volatile	uint8_t	*port;
 				uint8_t	bit;
-} port_t;
+} ioport_t;
 
 enum
 {
+	ADC_PORTS		= 2,
 	INPUT_PORTS		= 2,
 	OUTPUT_PORTS	= 4,
 	PWM_PORTS		= 4
 };
 
-static const port_t input_ports[INPUT_PORTS] =
-{
-	{ &PINB, 6 },
-	{ &PINA, 6 }
-};
-
-static const port_t output_ports[OUTPUT_PORTS] =
-{
-	{ &PORTB, 3 },
-	{ &PORTB, 4 },
-	{ &PORTA, 3 },
-	{ &PORTA, 4 }
-};
-
-static const port_t pwm_ports[PWM_PORTS] = 
-{
-	{ &PORTB, 3 },
-	{ &PORTB, 4 },
-	{ &PORTA, 3 },
-	{ &PORTA, 4 }
-};
+extern const adcport_t	adc_ports[];
+extern const ioport_t	input_ports[];
+extern const ioport_t	output_ports[];
+extern const ioport_t	pwm_ports[];
 
 #endif

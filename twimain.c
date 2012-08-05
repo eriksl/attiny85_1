@@ -6,6 +6,7 @@
 #include <usitwislave.h>
 
 #include "ioports.h"
+#include "adc.h"
 
 static volatile uint32_t porta_count = 0, portb_count = 0;
 
@@ -31,72 +32,6 @@ static volatile uint8_t pwm_value[PWM_PORTS] = { 128, 128, 128, 128 };
 //	PORTA &= ~0x18;
 //	PORTB &= ~0x18;
 //}
-
-static void reset_adc(void)
-{
-	ACSRA =		(1 << ACD)		|	// disable comperator
-				(0 << ACBG)		|	// bandgap select (n/a)
-				(0 << ACO)		|	// enable analog comperator output
-				(1 << ACI)		|	// clear comperator interrupt flag
-				(0 << ACIE)		|	// enable analog comperator interrupt
-				(0 << ACME)		|	// use adc multiplexer
-				(0 << ACIS1)	|	// interrupt mode select (n/a)
-				(0 << ACIS0);
-
-	ACSRB =		(0 << HSEL)		|	// hysteresis select (n/a)
-				(0 << HLEV)		|	// hysteresis level (n/a)
-				(0 << 5)		|
-				(0 << 4)		|
-				(0 << 3)		|
-				(0 << ACM0)		|	// analog comperator multiplexer (n/a)
-				(0 << ACM1)		|	// analog comperator multiplexer (n/a)
-				(0 << ACM2);		// analog comperator multiplexer (n/a)
-
-	ADCSRA =	(0 << ADEN)		|	// enable ADC
-				(0 << ADSC)		|	// start conversion
-				(0 << ADATE)	|	// auto trigger enable
-				(1 << ADIF)		|	// clear interrupt flag
-				(0 << ADIE)		|	// enable interrupt
-				(1 << ADPS2)	|
-				(1 << ADPS1)	|
-				(0 << ADPS0);		// select clock scaler 110 = 64
-
-	ADMUX	=	(0 << REFS1)	|	// select Vcc as Vref
-				(0 << REFS0)	|
-				(0 << ADLAR)	|	// right adjust result
-				(0 << MUX4)		|
-				(0 << MUX3)		|
-				(1 << MUX2)		|	// select 000110 = adc6 (pa7)
-				(1 << MUX1)		|
-				(0 << MUX0);
-
-	ADCSRB	=	(0 << BIN)		|	// unipolair input
-				(0 << GSEL)		|	// gain select (n/a)
-				(0 << 5)		|	// reserved
-				(0 << REFS2)	|	// select Vcc as Vref (n/a)
-				(0 << MUX5)		|	// select adc6 (pa7)
-				(0 << ADTS2)	|
-				(0 << ADTS1)	|	// auto trigger source (n/a)
-				(0 << ADTS0);
-
-	DIDR0 = 	(1 << ADC6D)	|	// disable digital input adc6
-				(0 << ADC5D)	|
-				(0 << ADC4D)	|
-				(0 << ADC3D)	|
-				(0 << AREFD)	|
-				(0 << ADC2D)	|
-				(0 << ADC1D)	|
-				(0 << ADC0D);
-
-	DIDR1 =		(0 << ADC10D)	|
-				(0 << ADC9D)	|
-				(0 << ADC8D)	|
-				(0 << ADC7D)	|
-				(0 << 3)		|	// reserved
-				(0 << 2)		|
-				(0 << 1)		|
-				(0 << 0);
-};
 
 static void reset_timer0(void)
 {
@@ -394,76 +329,10 @@ static void twi_callback(uint8_t buffer_size, volatile uint8_t input_buffer_leng
 
 		case(0xb0):	// start adc conversion
 		{
-			switch(io)
-			{
-				case(0x00):	//	pa7 / adc6
-				{
-					ADMUX	=	(0 << REFS1)	|	// select Vcc as Vref
-								(0 << REFS0)	|
-								(0 << ADLAR)	|	// right adjust result
-								(0 << MUX4)		|
-								(0 << MUX3)		|
-								(1 << MUX2)		|	// select 000110 = adc6 (pa7)
-								(1 << MUX1)		|
-								(0 << MUX0);
+			if(io > 1)
+				return(build_reply(output_buffer_length, output_buffer, input, 3, 0, 0));
 
-					ADCSRB	=	(0 << BIN)		|	// unipolair input
-								(0 << GSEL)		|	// gain select (n/a)
-								(0 << 5)		|	// reserved
-								(0 << REFS2)	|	// select Vcc as Vref (n/a)
-								(0 << MUX5)		|	// select adc6 (pa7)
-								(0 << ADTS2)	|
-								(0 << ADTS1)	|	// auto trigger source (n/a)
-								(0 << ADTS0);
-
-					ADCSRA =	(1 << ADEN)		|	// enable ADC
-								(1 << ADSC)		|	// start conversion
-								(0 << ADATE)	|	// auto trigger enable
-								(1 << ADIF)		|	// clear interrupt flag
-								(0 << ADIE)		|	// enable interrupt
-								(1 << ADPS2)	|
-								(1 << ADPS1)	|
-								(0 << ADPS0);		// select clock scaler 110 = 64
-					break;
-				}
-
-				case(0x01):	// internal temperature sensor
-				{
-					ADMUX	=	(1 << REFS1)	|	// 010 select internal 1.1 V ref as Vref
-								(0 << REFS0)	|
-								(0 << ADLAR)	|	// right adjust result
-								(1 << MUX4)		|
-								(1 << MUX3)		|
-								(1 << MUX2)		|	// select 111110 = adc11 (temperature sensor)
-								(1 << MUX1)		|
-								(1 << MUX0);
-
-					ADCSRB	=	(0 << BIN)		|	// unipolair input
-								(0 << GSEL)		|	// gain select (n/a)
-								(0 << 5)		|	// reserved
-								(0 << REFS2)	|	// 010 select internal 1.1 V ref as Vref
-								(1 << MUX5)		|	// select adc11 (temperature sensor)
-								(0 << ADTS2)	|
-								(0 << ADTS1)	|	// auto trigger source (n/a)
-								(0 << ADTS0);
-
-					ADCSRA =	(1 << ADEN)		|	// enable ADC
-								(1 << ADSC)		|	// start conversion
-								(0 << ADATE)	|	// auto trigger enable
-								(1 << ADIF)		|	// clear interrupt flag
-								(0 << ADIE)		|	// enable interrupt
-								(1 << ADPS2)	|
-								(1 << ADPS1)	|
-								(0 << ADPS0);		// select clock scaler 110 = 64
-					break;
-				}
-
-				default:
-				{
-					return(build_reply(output_buffer_length, output_buffer, input, 3, 0, 0));
-				}
-			}
-
+			adc_start(io);
 			return(build_reply(output_buffer_length, output_buffer, input, 0, 0, 0));
 		}
 
@@ -488,7 +357,7 @@ static void twi_callback(uint8_t buffer_size, volatile uint8_t input_buffer_leng
 			if(ADCSRA & _BV(ADSC))	// conversion not ready
 				return(build_reply(output_buffer_length, output_buffer, input, 5, 0, 0));
 
-			reset_adc();
+			adc_stop();
 
 			uint8_t replystring[2];
 
@@ -602,6 +471,8 @@ int main(void)
 	//init_timer0();
 
 	//setup_wdt();
+	
+	adc_init();
 
 	usi_twi_slave(0x02, 1, twi_callback, 0);
 

@@ -9,7 +9,8 @@ PROGRAMMER	=		dragon_isp
 PRGFLAGS	=		-b 0 -P usb
 
 PROGRAM		=		twimain
-OBJFILES	=		$(PROGRAM).o
+OBJFILES	=		$(PROGRAM).o adc.o ioports.o
+HEADERS		=		adc.h ioports.h
 HEXFILE		=		$(PROGRAM).hex
 ELFFILE		=		$(PROGRAM).elf
 PROGRAMMED	=		.programmed
@@ -24,20 +25,26 @@ LD2FLAGS	=		$(UTSLDLIB)
 
 all:				$(PROGRAMMED)
 
-$(PROGRAM).o:		$(PROGRAM).c ioports.h
+$(PROGRAM).o:		$(PROGRAM).c $(HEADERS)
 
 %.o:				%.c
-					avr-gcc -c $(CFLAGS) $< -o $@
+					@echo "CC $< -> $@"
+					@avr-gcc -c $(CFLAGS) $< -o $@
+
+adc.o:				adc.h
 
 $(ELFFILE):			$(OBJFILES)
-					avr-gcc $(LD1FLAGS) $(OBJFILES) $(LD2FLAGS) -o $@
+					@echo "LD $< -> $@"
+					@avr-gcc $(LD1FLAGS) $(OBJFILES) $(LD2FLAGS) -o $@
 
 $(HEXFILE):			$(ELFFILE)
-					avr-objcopy -j .text -j .data -O ihex $< $@
+					@echo "OBJCOPY $< -> $@"
+					@avr-objcopy -j .text -j .data -O ihex $< $@
 
 $(PROGRAMMED):		$(HEXFILE)
-					sh -c "avrdude -vv -c $(PROGRAMMER) -p $(MCU) $(PRGFLAGS) -U flash:w:$^ > $(PROGRAMMED) 2>&1"
+					@echo "AVRDUDE $^"
+					@sh -c "avrdude -vv -c $(PROGRAMMER) -p $(MCU) $(PRGFLAGS) -U flash:w:$^ > $(PROGRAMMED) 2>&1"
 
 clean:			
-					@echo rm $(OBJFILES) $(ELFFILE) $(HEXFILE) $(PROGRAMMED)
+					@echo "RM $(OBJFILES) $(ELFFILE) $(HEXFILE) $(PROGRAMMED)"
 					@-rm $(OBJFILES) $(ELFFILE) $(HEXFILE) 2> /dev/null || true
