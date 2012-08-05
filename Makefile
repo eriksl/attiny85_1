@@ -44,6 +44,7 @@ $(ELFFILE):			$(OBJFILES)
 $(HEXFILE):			$(ELFFILE)
 					@echo "OBJCOPY $< -> $@"
 					@avr-objcopy -j .text -j .data -O ihex $< $@
+					@sh -c 'avr-size $< | (read header; read text data bss junk; echo "SIZE: flash: $$[text + data] ram: $$[data + bss]")'
 
 $(PROGRAMMED):		$(HEXFILE)
 					@echo "AVRDUDE $^"

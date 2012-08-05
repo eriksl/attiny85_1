@@ -32,7 +32,8 @@
 			1	0	1	0	0						0xa0	write pwm mode, supply 1 byte
 
 			1	0	1	1	0						0xb0	start adc conversion
-			1	1	0	0	0		0	0	0		0xc0	read adc, returns AA BB, where AA = msb, BB = lsb
+			1	1	0	0	0		0	0	0		0xc0	read adc, returns 2 bytes
+			1	1	0	0	0		0	0	1		0xc1	timer0 status, returns 1 byte, 0 = stopped, 1 = prescaler value
 
 			1	1	0	1	0		0	0	0		0xd0	twi stats - disable
 			1	1	0	1	0		0	0	1		0xd1	twi stats - enable
@@ -53,7 +54,7 @@
 
 *** REPLY ***
 	
-	byte	length of reply
+	byte	length of reply - this length byte
 	byte	command this reply relates to
 	byte	command this reply relates to (repeat)
 	byte	error code
@@ -110,6 +111,8 @@
 			0x4x	read/reset counter
 			0x5x	read input
 			0x6x	write output
+			0x7x	read pwm
+			0x8x	write pwm
 			0xbx	start adc conversion
 			0xc0	read adc
 			0xd0	twi stats - disable

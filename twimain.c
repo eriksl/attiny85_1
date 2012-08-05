@@ -9,10 +9,6 @@
 #include "timer0.h"
 #include "watchdog.h"
 
-static volatile uint32_t porta_count = 0, portb_count = 0;
-
-static volatile uint8_t pwm_value[PWM_PORTS] = { 128, 128, 128, 128 };
-
 //ISR(WDT_vect)
 //{
 //	setup_wdt();
@@ -35,7 +31,7 @@ ISR(PCINT_vect)
 		return;
 	}
 
-	uint8_t pv = pwm_value[0];
+	uint8_t pv = pwm_ports[0].pwm;
 
 	if(!port[0])
 	{
@@ -57,21 +53,27 @@ ISR(PCINT_vect)
 		counter_ports[1].counter++;
 	}
 
-	pwm_value[0] = pv;
+	pwm_ports[0].pwm = pv;
 }
 
 ISR(TIMER0_COMPA_vect)
 {
 	static	uint8_t current;
-			uint8_t ix;
+			uint8_t ix, counted_zero = 0;
 
 	if(current == 0)
 		for(ix = 0; ix < PWM_PORTS; ix++)
-			*pwm_ports[ix].port |= (1 << pwm_ports[ix].bit);
+			if(pwm_ports[ix].pwm == 0)
+				counted_zero++;
+			else
+				*pwm_ports[ix].port |= (1 << pwm_ports[ix].bit);
 
 	for(ix = 0; ix < PWM_PORTS; ix++)
-		if(current == pwm_value[ix])
+		if(current == pwm_ports[ix].pwm)
 			*pwm_ports[ix].port &= ~(1 << pwm_ports[ix].bit);
+
+	if(counted_zero == PWM_PORTS)
+		timer0_stop();
 
 	current++;
 
@@ -84,7 +86,7 @@ static void build_reply(uint8_t volatile *output_buffer_length, volatile uint8_t
 	uint8_t checksum;
 	uint8_t ix;
 
-	output_buffer[0] = 5 + reply_length;
+	output_buffer[0] = 4 + reply_length;
 	output_buffer[1] = command;
 	output_buffer[2] = command;
 	output_buffer[3] = error_code;
@@ -210,6 +212,32 @@ static void twi_callback(uint8_t buffer_size, volatile uint8_t input_buffer_leng
 			return(build_reply(output_buffer_length, output_buffer, input, 0, 0, 0));
 		}
 
+		case(0x70):	//	read pwm
+		{
+			uint8_t value;
+
+			if(io >= PWM_PORTS)
+				return(build_reply(output_buffer_length, output_buffer, input, 3, 0, 0));
+
+			value = pwm_ports[io].pwm;
+
+			return(build_reply(output_buffer_length, output_buffer, input, 0, 1, &value));
+		}
+
+		case(0x80):	//	write pwm
+		{
+			if(input_buffer_length < 2)
+				return(build_reply(output_buffer_length, output_buffer, input, 4, 0, 0));
+
+			if(io >= PWM_PORTS)
+				return(build_reply(output_buffer_length, output_buffer, input, 3, 0, 0));
+
+			if((pwm_ports[io].pwm = input_buffer[1]) > 0)
+				timer0_start();
+
+			return(build_reply(output_buffer_length, output_buffer, input, 0, 0, 0));
+		}
+
 		case(0xb0):	// start adc conversion
 		{
 			if(io > 1)
@@ -225,7 +253,7 @@ static void twi_callback(uint8_t buffer_size, volatile uint8_t input_buffer_leng
 
 			switch(io)
 			{
-				case(0x00):	// read ADC
+				case(0x00):	// 0xc0 read ADC
 				{
 					value = ADCW;
 
@@ -240,6 +268,12 @@ static void twi_callback(uint8_t buffer_size, volatile uint8_t input_buffer_leng
 					replystring[1] = (value & 0x00ff) >> 0;
 
 					return(build_reply(output_buffer_length, output_buffer, input, 0, sizeof(replystring), replystring));
+				}
+
+				case(0x01): // 0xc1 read timer0 status
+				{
+					uint8_t value = timer0_status();
+					return(build_reply(output_buffer_length, output_buffer, input, 0, 1, &value));
 				}
 
 				default:
@@ -359,7 +393,8 @@ int main(void)
 
 	// 8 mhz / (prescaler = 8) / (counter = 16) = 62500 hz
 	// (steps = 256) = 244 hz
-	// timer0_init(8, 16); 
+	timer0_init(TIMER0_PRESCALER_8, 16); 
+	timer0_stop();
 
 	usi_twi_slave(0x02, 1, twi_callback, 0);
 

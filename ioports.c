@@ -29,12 +29,12 @@ const ioport_t output_ports[OUTPUT_PORTS] =
 	{ &PORTA, 4 }
 };
 
-const ioport_t pwm_ports[PWM_PORTS] = 
+pwmport_t pwm_ports[PWM_PORTS] = 
 {
-	{ &PORTB, 3 },
-	{ &PORTB, 4 },
-	{ &PORTA, 3 },
-	{ &PORTA, 4 }
+	{ &PORTB, 3, 0x00 },
+	{ &PORTB, 4, 0x00 },
+	{ &PORTA, 3, 0x00 },
+	{ &PORTA, 4, 0x00 }
 };
 
 counterport_t counter_ports[COUNTER_PORTS] =
