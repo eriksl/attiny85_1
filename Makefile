@@ -9,8 +9,8 @@ PROGRAMMER	=		dragon_isp
 PRGFLAGS	=		-b 0 -P usb
 
 PROGRAM		=		twimain
-OBJFILES	=		$(PROGRAM).o adc.o ioports.o
-HEADERS		=		adc.h ioports.h
+OBJFILES	=		$(PROGRAM).o adc.o ioports.o timer0.o watchdog.o
+HEADERS		=		adc.h ioports.h timer0.h watchdog.h
 HEXFILE		=		$(PROGRAM).hex
 ELFFILE		=		$(PROGRAM).elf
 PROGRAMMED	=		.programmed
@@ -32,6 +32,9 @@ $(PROGRAM).o:		$(PROGRAM).c $(HEADERS)
 					@avr-gcc -c $(CFLAGS) $< -o $@
 
 adc.o:				adc.h
+ioports.o:			ioports.h
+timer0.o:			timer0.h
+watchdog.o:			watchdog.h
 
 $(ELFFILE):			$(OBJFILES)
 					@echo "LD $< -> $@"

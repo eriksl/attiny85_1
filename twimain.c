@@ -1,29 +1,17 @@
 #include <stdint.h>
 #include <avr/io.h>
 #include <avr/interrupt.h>
-#include <util/delay.h>
 
 #include <usitwislave.h>
 
 #include "ioports.h"
 #include "adc.h"
+#include "timer0.h"
+#include "watchdog.h"
 
 static volatile uint32_t porta_count = 0, portb_count = 0;
 
 static volatile uint8_t pwm_value[PWM_PORTS] = { 128, 128, 128, 128 };
-
-//static void setup_wdt(void)
-//{
-//	WDTCR =
-//		(1 << WDIF)	|
-//		(1 << WDIE)	|
-//		(1 << WDCE)	|
-//		(1 << WDE)	|
-//		(0 << WDP3)	|
-//		(0 << WDP2)	|
-//		(1 << WDP1)	|
-//		(1 << WDP0);
-//}
 
 //ISR(WDT_vect)
 //{
@@ -32,12 +20,6 @@ static volatile uint8_t pwm_value[PWM_PORTS] = { 128, 128, 128, 128 };
 //	PORTA &= ~0x18;
 //	PORTB &= ~0x18;
 //}
-
-static void reset_timer0(void)
-{
-	TCNT0H =	0;
-	TCNT0L =	0;
-}
 
 ISR(PCINT_vect)
 {
@@ -89,54 +71,7 @@ ISR(TIMER0_COMPA_vect)
 
 	current++;
 
-	reset_timer0();
-}
-
-static void init_timer0(void)
-{
-	static const int compareval = 16;	// 8 mhz / (prescaler = 8) / (counter = 16) = 62500 hz
-										// / (steps = 256) = 244 hz
-
-	TCCR0A =	(1 << TCW0)		|	// enable 16 bit mode
-				(0 << ICEN0)	|	// enable capture mode
-				(0 << ICNC0)	|	// enable capture mode noise canceller
-				(0 << ICES0)	|	// enable capture mode edge select
-				(0 << ACIC0)	|	// enable capture mode by analog compare
-				(0 << 2)		|
-				(0 << 1)		|	// reserved
-				(0 << WGM00);		// waveform generation mode => normal (n/a)
-
-	OCR0B =		(compareval & 0xff00) >> 8;	// output compare 0 a high byte
-	OCR0A =		(compareval & 0x00ff) >> 0;	// output compare 0 a low byte
-
-	TIMSK =		(0 << OCIE1D)	|	// enable output compare match 1 d interrupt
-				(0 << OCIE1A)	|	// enable output compare match 1 a interrupt
-				(0 << OCIE1B)	|	// enable output compare match 1 b interrupt
-				(1 << OCIE0A)	|	// enable output compare match 0 a interrupt
-				(0 << OCIE0B)	|	// enable output compare match 0 b interrupt
-				(0 << TOIE1)	|	// enable timer 1 overflow interrupt
-				(0 << TOIE0)	|	// enable timer 0 overflow interrupt
-				(0 << TICIE0);		// enable timer 0 capture interrupt
-
-	TIFR =		(0 << OCF1D)	|	// output compare flag 1 d
-				(0 << OCF1A)	|	// output compare flag 1 a
-				(0 << OCF1B)	|	// output compare flag 1 b
-				(1 << OCF0A)	|	// output compare flag 0 a
-				(0 << OCF0B)	|	// output compare flag 0 b
-				(0 << TOV1)		|	// timer 1 overflow flag
-				(0 << TOV0)		|	// timer 0 overflow flag
-				(0 << ICF0);		// timer 0 input capture flag
-
-	TCCR0B =	(0 << 7)		|
-				(0 << 6)		|
-				(0 << 5)		|	// reserved
-				(0 << TSM)		|	// enable synchronisation mode
-				(0 << PSR0)		|	// reset prescaler
-				(0 << CS02)		|	// clock source + prescaler
-				(1 << CS01)		|	//		001 = 1, 010 = 8, 011 = 64
-				(0 << CS00);		//		100 = 256, 101 = 1024
-
-	reset_timer0();
+	timer0_reset();
 }
 
 static void build_reply(uint8_t volatile *output_buffer_length, volatile uint8_t *output_buffer,
@@ -468,11 +403,14 @@ int main(void)
 				(0 << PRUSI)	|	// usi
 				(0 << PRADC);		// adc / analog comperator
 
-	//init_timer0();
-
-	//setup_wdt();
+	// watchdog_setup();
+	// watchdog_start();
 	
 	adc_init();
+
+	// 8 mhz / (prescaler = 8) / (counter = 16) = 62500 hz
+	// (steps = 256) = 244 hz
+	// timer0_init(8, 16); 
 
 	usi_twi_slave(0x02, 1, twi_callback, 0);
 
