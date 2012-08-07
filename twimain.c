@@ -31,51 +31,44 @@ ISR(PCINT_vect)
 		return;
 	}
 
-	uint8_t pv = pwm_ports[0].pwm;
-
 	if(!port[0])
-	{
-		if(pv > 8)
-			pv -= 8;
-		else
-			pv = 0;
-
 		counter_ports[0].counter++;
-	}
 
 	if(!port[1])
-	{
-		if(pv < 248)
-			pv += 8;
-		else
-			pv = 255;
-
 		counter_ports[1].counter++;
-	}
-
-	pwm_ports[0].pwm = pv;
 }
 
 ISR(TIMER0_COMPA_vect)
 {
 	static	uint8_t current;
-			uint8_t ix, counted_zero = 0;
-
-	if(current == 0)
-		for(ix = 0; ix < PWM_PORTS; ix++)
-			if(pwm_ports[ix].pwm == 0)
-				counted_zero++;
-			else
-				*pwm_ports[ix].port |= (1 << pwm_ports[ix].bit);
+			uint8_t ix, nonzero_pwm = 0;
 
 	for(ix = 0; ix < PWM_PORTS; ix++)
-		if(current == pwm_ports[ix].pwm)
-			*pwm_ports[ix].port &= ~(1 << pwm_ports[ix].bit);
+	{
+		if(pwm_ports[ix].pwm > 0)
+			nonzero_pwm++;
 
-	if(counted_zero == PWM_PORTS)
+		if(current == 0)
+		{
+			if(pwm_ports[ix].pwm > 0)
+				*pwm_ports[ix].port |= (1 << pwm_ports[ix].bit);
+			else
+				*pwm_ports[ix].port &= ~(1 << pwm_ports[ix].bit);
+		}
+		else
+		{
+			if(pwm_ports[ix].pwm == current)
+				*pwm_ports[ix].port &= ~(1 << pwm_ports[ix].bit);
+		}
+	}
+
+	if(nonzero_pwm > 0)
+		current++;
+	else
+	{
+		current = 0;
 		timer0_stop();
-
-	current++;
+	}
 
 	timer0_reset();
 }
@@ -214,14 +207,12 @@ static void twi_callback(uint8_t buffer_size, volatile uint8_t input_buffer_leng
 
 		case(0x70):	//	read pwm
 		{
-			uint8_t value;
-
 			if(io >= PWM_PORTS)
 				return(build_reply(output_buffer_length, output_buffer, input, 3, 0, 0));
 
-			value = pwm_ports[io].pwm;
+			uint8_t pwm = pwm_ports[io].pwm;
 
-			return(build_reply(output_buffer_length, output_buffer, input, 0, 1, &value));
+			return(build_reply(output_buffer_length, output_buffer, input, 0, 1, &pwm));
 		}
 
 		case(0x80):	//	write pwm
@@ -232,8 +223,17 @@ static void twi_callback(uint8_t buffer_size, volatile uint8_t input_buffer_leng
 			if(io >= PWM_PORTS)
 				return(build_reply(output_buffer_length, output_buffer, input, 3, 0, 0));
 
-			if((pwm_ports[io].pwm = input_buffer[1]) > 0)
-				timer0_start();
+			uint8_t pwm = input_buffer[1];
+
+			pwm_ports[io].pwm = pwm;
+
+			if(pwm > 0)
+			{
+				if(timer0_status() == 0)
+					timer0_start();
+			}
+			else
+				*pwm_ports[io].port &= ~(1 << pwm_ports[io].bit);
 
 			return(build_reply(output_buffer_length, output_buffer, input, 0, 0, 0));
 		}
@@ -391,10 +391,9 @@ int main(void)
 	
 	adc_init();
 
-	// 8 mhz / (prescaler = 8) / (counter = 16) = 62500 hz
-	// (steps = 256) = 244 hz
-	timer0_init(TIMER0_PRESCALER_8, 16); 
-	timer0_stop();
+	// 8 mhz / (prescaler = 64) / (counter = 4) = 31250 hz
+	// (steps = 256) = 122 Hz
+	timer0_init(TIMER0_PRESCALER_64, 4); 
 
 	usi_twi_slave(0x02, 1, twi_callback, 0);
 

@@ -3,21 +3,21 @@
 
 #include "timer0.h"
 
-static uint8_t	cs0[3]	= { 0, 0, 0 };
-static uint8_t	ocr0a	= 0xff;
-static uint8_t	ocr0b	= 0xff;
+static uint8_t	cs0[3];
+static uint8_t	ocr0a;
+static uint8_t	ocr0b;
 
-void timer0_init(uint8_t scaler, uint16_t counter)
+void timer0_init(uint8_t prescaler, uint16_t counter)
 {
-	if(scaler > 5)
+	if(prescaler > 5)
 		return;
 
-	cs0[0] = (scaler & (1 << 0)) >> 0;
-	cs0[1] = (scaler & (1 << 1)) >> 1;
-	cs0[2] = (scaler & (1 << 2)) >> 2;
+	cs0[0] = (prescaler & (1 << 0)) >> 0;
+	cs0[1] = (prescaler & (1 << 1)) >> 1;
+	cs0[2] = (prescaler & (1 << 2)) >> 2;
 
-	ocr0a = (counter & 0x00ff) >> 0;	// output compare 0 a high byte
-	ocr0b = (counter & 0xff00) >> 8;	// output compare 0 a low byte
+	ocr0a = (counter & 0x00ff) >> 0;	// output compare 0 a low byte
+	ocr0b = (counter & 0xff00) >> 8;	// output compare 0 a high byte
 
 	PRR &= ~_BV(PRTIM0);
 
@@ -49,30 +49,22 @@ void timer0_init(uint8_t scaler, uint16_t counter)
 				(0 << TOV1)		|	// clear timer 1 overflow flag
 				(1 << TOV0)		|	// clear timer 0 overflow flag
 				(0 << ICF0);		// clear timer 0 input capture flag
-
-}
-
-void timer0_reset(void)
-{
-	OCR0B =	ocr0b;
-	OCR0A =	ocr0a;
-
-	TCNT0H =	0;
-	TCNT0L =	0;
 }
 
 void timer0_start(void)
 {
 	timer0_stop();
-
 	timer0_reset();
+
+	OCR0B =	ocr0b;	// high byte
+	OCR0A =	ocr0a;	// low byte
 
 	TCCR0B =	(0 << 7)			|	// reserved
 				(0 << 6)			|	// reserved
 				(0 << 5)			|	// reserved
 				(0 << TSM)			|	// timer synchronisation mode
 				(0 << PSR0)			|	// prescaler reset
-				(cs0[2] << CS02)	|	// scaler
+				(cs0[2] << CS02)	|	// prescaler
 				(cs0[1] << CS01)	|	// 	start timer
 				(cs0[0] << CS00);		//
 }
@@ -84,7 +76,7 @@ void timer0_stop(void)
 				(0 << 5)		|	// reserved
 				(0 << TSM)		|	// timer synchronisation mode
 				(0 << PSR0)		|	// prescaler reset
-				(0 << CS02)		|	// scaler
+				(0 << CS02)		|	// prescaler
 				(0 << CS01)		|	// 	000 = stop timer
 				(0 << CS00);		//
 }
