@@ -14,7 +14,7 @@ HEADERS		=		adc.h ioports.h timer0.h watchdog.h
 HEXFILE		=		$(PROGRAM).hex
 ELFFILE		=		$(PROGRAM).elf
 PROGRAMMED	=		.programmed
-CFLAGS		=		-Wall -Winline -Os -g -mmcu=$(MCU) -DF_CPU=8000000UL -I$(UTSBASE)
+CFLAGS		=		-Wall -Winline -Os -fpack-struct -mmcu=$(MCU) -DF_CPU=8000000UL -I$(UTSBASE)
 LD1FLAGS	=		-Wall -mmcu=$(MCU) -L$(UTSBASE) 
 LD2FLAGS	=		$(UTSLDLIB)
 

@@ -68,6 +68,7 @@
 			3	parameter out of range
 			4	missing parameter(s)
 			5	not ready
+			6	internal error
 
 *** MODELS ***
 
