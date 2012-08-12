@@ -5,8 +5,6 @@
 
 void adc_init(void)
 {
-	PRR &= ~_BV(PRADC);
-
 	ACSRA =		(1 << ACD)		|	// disable comperator
 				(0 << ACBG)		|	// bandgap select (n/a)
 				(0 << ACO)		|	// enable analog comperator output

@@ -7,6 +7,7 @@
 #include "ioports.h"
 #include "adc.h"
 #include "timer0.h"
+#include "pwm_timer1.h"
 
 volatile static struct
 {
@@ -174,10 +175,39 @@ static void twi_callback(uint8_t buffer_size, volatile uint8_t input_buffer_leng
 					return(build_reply(output_buffer_length, output_buffer, input, 0, sizeof(replystring), replystring));
 				}
 
-				case(0x02): // 0x03 read timer0 status
+				case(0x02): // 0x02 read timer0 counter
 				{
-					uint8_t value = timer0_status();
+					uint8_t value = timer0_get_counter();
 					return(build_reply(output_buffer_length, output_buffer, input, 0, 1, &value));
+				}
+
+				case(0x03): // 0x03 read timer1 counter
+				{
+					uint16_t value = pwm_timer1_get_counter();
+					uint8_t rv[2];
+
+					rv[0] = (value & 0xff00) >> 8;
+					rv[1] = (value & 0x00ff) >> 0;
+
+					return(build_reply(output_buffer_length, output_buffer, input, 0, sizeof(rv), rv));
+				}
+
+				case(0x04): // 0x04 read timer1 max
+				{
+					uint16_t value = pwm_timer1_get_max();
+					uint8_t rv[2];
+
+					rv[0] = (value & 0xff00) >> 8;
+					rv[1] = (value & 0x00ff) >> 0;
+
+					return(build_reply(output_buffer_length, output_buffer, input, 0, sizeof(rv), rv));
+				}
+
+				case(0x05): // 0x05 read timer1 prescaler
+				{
+					uint8_t value = pwm_timer1_status();
+
+					return(build_reply(output_buffer_length, output_buffer, input, 0, sizeof(value), &value));
 				}
 
 				case(0x07): // extended command
@@ -337,6 +367,39 @@ static void twi_callback(uint8_t buffer_size, volatile uint8_t input_buffer_leng
 			return(build_reply(output_buffer_length, output_buffer, input, 0, sizeof(duty), &duty));
 		}
 
+		case(0x80): // write pwm
+		{
+			if(input_buffer_length < 3)
+				return(build_reply(output_buffer_length, output_buffer, input, 4, 0, 0));
+
+			if(io >= PWM_PORTS)
+				return(build_reply(output_buffer_length, output_buffer, input, 3, 0, 0));
+
+			uint16_t value;
+
+			value = input_buffer[1];
+			value <<= 8;
+			value |= input_buffer[2];
+
+			pwm_timer1_set_pwm(io, value);
+
+			return(build_reply(output_buffer_length, output_buffer, input, 0, 0, 0));
+		}
+
+		case(0x90): // read pwm
+		{
+			if(io >= PWM_PORTS)
+				return(build_reply(output_buffer_length, output_buffer, input, 3, 0, 0));
+
+			uint16_t value = pwm_timer1_get_pwm(io);
+			uint8_t reply[2];
+
+			reply[0] = (value & 0xff00) >> 8;
+			reply[1] = (value & 0x00ff) >> 0;
+
+			return(build_reply(output_buffer_length, output_buffer, input, 0, sizeof(reply), reply));
+		}
+
 		case(0xc0):	// start adc conversion
 		{
 			if(io > 1)
@@ -426,7 +489,7 @@ int main(void)
 				(0 << 6)		|	// reserved
 				(0 << 5)		|
 				(0 << 4)		|
-				(1 << PRTIM1)	|	// timer1
+				(0 << PRTIM1)	|	// timer1
 				(0 << PRTIM0)	|	// timer0
 				(0 << PRUSI)	|	// usi
 				(0 << PRADC);		// adc / analog comperator
@@ -439,10 +502,13 @@ int main(void)
 	for(slot = 0; slot < OUTPUT_PORTS; slot++)
 		*output_ports[slot].ddr |= _BV(output_ports[slot].bit);
 
+	for(slot = 0; slot < PWM_PORTS; slot++)
+		*pwm_ports[slot].ddr |= _BV(pwm_ports[slot].bit);
+
 	for(slot = 0; slot < OUTPUT_PORTS; slot++)
 	{
-		soft_pwm_slots[slot].duty     = 0;
 		soft_pwm_slots[slot].ioport	= slot;
+		soft_pwm_slots[slot].duty     = 0;
 	}
 
 	for(slot = 0; slot < COUNTER_PORTS; slot++)
@@ -450,10 +516,14 @@ int main(void)
 
 	adc_init();
 
-	// 8 mhz / 256 / 256 = 122
-
+	// 8 mhz / 256 / 256 = 122 Hz
 	timer0_init(TIMER0_PRESCALER_256);
 	timer0_set_max(0xff);
+
+	// 8 mhz / 32 / 1024 = 244 Hz
+	pwm_timer1_init(PWM_TIMER1_PRESCALER_32);
+	pwm_timer1_set_max(0x3ff);
+	pwm_timer1_start();
 
 	usi_twi_slave(0x02, 1, twi_callback, 0);
 

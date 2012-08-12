@@ -34,15 +34,15 @@ case $testcase in
 		do
 			for io in 0 1 2 3 2 1
 			do
-				command="6${io}"
+				command="8${io}"
 
 				echo "s 04 ${command} 01 p" >&6
 				flush
-				echo "s 05 04 p" >&6
+				echo "r 00 p" >&6
 				flush
-				echo "s 04 ${command} 00 p" >&6
+				echo "w ${command} 00 p" >&6
 				flush
-				echo "s 05 04 p" >&6
+				echo "r 00 p" >&6
 				flush
 			done
 		done
@@ -53,18 +53,15 @@ case $testcase in
 
 		while true
 		do
-			for ((pwm = 1; pwm < 128; pwm += 5))
+			for ((pwm = 1; pwm < 1024; pwm += 50))
 			do
-				printf "w 80 %02x p\n" $[((pwm + 0) % 128) / 1] >&6
+				printf "w 80 %04x p\n" $[((pwm + 0) & 1023)] >&6
 				flush
 
-				printf "w 81 %02x p\n" $[((pwm + 64) % 128) / 1] >&6
+				printf "w 81 %04x p\n" $[((1024 - pwm) & 1023)] >&6
 				flush
 
-				printf "w 82 %02x p\n" $[((192 - pwm) % 128) / 1] >&6
-				flush
-
-				printf "w 83 %02x p\n" $[((128 - pwm) % 128) / 1] >&6
+				printf "w 82 %04x p\n" $[((512 - pwm) & 1023)] >&6
 				flush
 
 				usleep 20000
