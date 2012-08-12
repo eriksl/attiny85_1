@@ -15,40 +15,36 @@
 									1	1	1		0x07	i/o 7
 
 			0	0	0	0	0		0	0	0		0x00	identify, returns: 0x4a 0xfb AA BB 5*CC DD where AA=numeric device id, BB=firmware version, CC=ascii id string
-			0	0	0	0	0		0	0	1		0x01	long command, rest follows after this byte
+			0	0	0	0	0		0	0	1		0x01	read adc, returns 2 bytes
+			0	0	0	0	0		0	1	0		0x02	timer0 status, returns 1 byte, 0 = stopped, 1 = prescaler value
+			0	0	0	0	0		1	1	1		0x07	extended command, rest follows after this byte
 
 			0	0	0	1	0						0x10	read counter, returns 4 bytes
-			0	0	1	0	0						0x20	write counter, supply 4 bytes
-			0	0	1	1	0						0x30	reset counter
-			0	1	0	0	0						0x40	read/reset counter, returns like read counter
+			0	0	1	0	0						0x20	read/reset counter, returns like read counter
 
-			0	1	0	1	0						0x50	read input, returns 1 byte
-			0	1	1	0	0						0x60	write output, supply 1 byte
+			0	0	1	1	0						0x30	read input, returns 1 byte
 
-			0	1	1	1	0						0x70	read softpwm value, returns 1 byte
-			1	0	0	0	0						0x80	write softpwm value, supply 1 byte
-			0	1	1	1	1						0x78	read hardpwm value, returns 2 bytes
-			1	0	0	0	1						0x88	write hardpwm value, supply 2 bytes
+			0	1	0	0	0						0x40	write output / softpwm, 1 byte, 0 = off, 255 = on, other is pwm
+			0	1	0	1	0						0x50	read output / softpwm, 1 byte like write output / softpwm
+			0	1	1	0	0						0x60	write softpwm mode, supply 1 byte
+			0	1	1	1	0						0x70	read softpwm mode, returns 1 byte
 
-			1	0	0	1	0						0x90	read softpwm mode, returns 1 byte
-			1	0	1	0	0						0xa0	write softpwm mode, supply 1 byte
-			1	0	0	1	1						0x98	read hardpwm mode, returns 1 byte
-			1	0	1	0	1						0xa8	write hardpwm mode, supply 1 byte
+			1	0	0	0	0						0x80	write pwm, 2 bytes, 0 = off, 65536 = on
+			1	0	0	1	0						0x90	read pwm, 2 bytes like write pwm
+			1	0	1	0	0						0xa0	write hardpwm mode, supply 1 byte
+			1	0	1	1	0						0xb0	read hardpwm mode, returns 1 byte
 
-			1	0	1	1	0						0xb0	start adc conversion
-			1	1	0	0	0		0	0	0		0xc0	read adc, returns 2 bytes
-			1	1	0	0	0		0	0	1		0xc1	timer0 status, returns 1 byte, 0 = stopped, 1 = prescaler value
+			1	1	0	0	0						0xc0	start adc conversion
 
-			1	1	0	1	0		0	0	0		0xd0	twi stats - disable
-			1	1	0	1	0		0	0	1		0xd1	twi stats - enable
-			1	1	0	1	0		0	1	0		0xd2	twi stats - read start conditions		returns AA BB as msb lsb.
-			1	1	0	1	0		0	1	1		0xd3	twi stats - read stop conditions		returns AA BB as msb lsb.
-			1	1	0	1	0		1	0	0		0xd4	twi stats - read error conditions		returns AA BB as msb lsb.
-			1	1	0	1	0		1	0	1		0xd5	twi stats - read overflow conditions	returns AA BB as msb lsb.
-			1	1	0	1	0		1	1	0		0xd6	twi stats - read local frames			returns AA BB as msb lsb.
-			1	1	0	1	0		1	1	1		0xd7	twi stats - read idle calls				returns AA BB as msb lsb.
+			1	1	1	1	0		0	0	0		0xf0	twi stats - disable
+			1	1	1	1	0		0	0	1		0xf1	twi stats - enable
+			1	1	1	1	0		0	1	0		0xf2	twi stats - read start conditions		returns AA BB as msb lsb.
+			1	1	1	1	0		0	1	1		0xf3	twi stats - read stop conditions		returns AA BB as msb lsb.
+			1	1	1	1	0		1	0	0		0xf4	twi stats - read error conditions		returns AA BB as msb lsb.
+			1	1	1	1	0		1	0	1		0xf5	twi stats - read overflow conditions	returns AA BB as msb lsb.
+			1	1	1	1	0		1	1	0		0xf6	twi stats - read local frames			returns AA BB as msb lsb.
+			1	1	1	1	0		1	1	1		0xf7	twi stats - read idle calls				returns AA BB as msb lsb.
 
-			1	1	1	0	0						0xe0	read output, returns 1 byte
 
 	softpwm mode =
 			0	on
@@ -72,6 +68,7 @@
 			4	missing parameter(s)
 			5	not ready
 			6	internal error
+			7	not implemented
 
 *** MODELS ***
 
@@ -108,22 +105,21 @@
 		commands
 
 			0x00	identify
+			0x01	read adc	
+			0x02	timer0 status
 			0x1x	read counter
-			0x2x	write counter
-			0x3x	reset counter
-			0x4x	read/reset counter
-			0x5x	read input
-			0x6x	write output
-			0x7x	read softpwm
-			0x8x	write softpwm
-			0xbx	start adc conversion
-			0xc0	read adc
-			0xd0	twi stats - disable
-			0xd1	twi stats - enable
-			0xd2	twi stats - read start conditions
-			0xd3	twi stats - read stop conditions
-			0xd4	twi stats - read error conditions
-			0xd5	twi stats - read overflow conditions
-			0xd6	twi stats - read local frames
-			0xd7	twi stats - read idle calls
-			0xe0	read output
+			0x2x	read / reset counter
+			0x3x	read input
+			0x4x	write output / softpwm
+			0x5x	read output / softpwm
+			0x80	write pwm
+			0x90	read pwm
+			0xc0	start adc conversion
+			0xf0	twi stats - disable
+			0xf1	twi stats - enable
+			0xf2	twi stats - read start conditions
+			0xf3	twi stats - read stop conditions
+			0xf4	twi stats - read error conditions
+			0xf5	twi stats - read overflow conditions
+			0xf6	twi stats - read local frames
+			0xf7	twi stats - read idle calls

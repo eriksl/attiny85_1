@@ -139,37 +139,71 @@ static void twi_callback(uint8_t buffer_size, volatile uint8_t input_buffer_leng
 
 	switch(command)
 	{
-		case(0x00):	// special
+		case(0x00):	// short / no-io
 		{
-			if(io == 0x00)	//	identify
+			switch(io)
 			{
-				static const uint8_t replystring[] =
+				case(0x00):	// identify
 				{
-					0x4a, 0xfb,
-					0x06, 0x00,
-					't', '8', '6', '1', 'a'
-				};
+					static const uint8_t replystring[] =
+					{
+						0x4a, 0xfb,
+						0x06, 0x00,
+						't', '8', '6', '1', 'a'
+					};
 
-				return(build_reply(output_buffer_length, output_buffer, input, 0, sizeof(replystring), replystring));
+					return(build_reply(output_buffer_length, output_buffer, input, 0, sizeof(replystring), replystring));
+				}
+
+				case(0x01):	// 0x02 read ADC
+				{
+					uint8_t value;
+
+					value = ADCW;
+
+					if(ADCSRA & _BV(ADSC))	// conversion not ready
+						return(build_reply(output_buffer_length, output_buffer, input, 5, 0, 0));
+
+					adc_stop();
+
+					uint8_t replystring[2];
+
+					replystring[0] = (value & 0xff00) >> 8;
+					replystring[1] = (value & 0x00ff) >> 0;
+
+					return(build_reply(output_buffer_length, output_buffer, input, 0, sizeof(replystring), replystring));
+				}
+
+				case(0x02): // 0x03 read timer0 status
+				{
+					uint8_t value = timer0_status();
+					return(build_reply(output_buffer_length, output_buffer, input, 0, 1, &value));
+				}
+
+				case(0x07): // extended command
+				{
+					return(build_reply(output_buffer_length, output_buffer, input, 7, 0, 0));
+				}
+
+				default:
+				{
+					return(build_reply(output_buffer_length, output_buffer, input, 7, 0, 0));
+				}
 			}
 
 			break;
 		}
 
 		case(0x10):	// 0x10 read counter
-		case(0x30):	// 0x30 reset counter
-		case(0x40): // 0x40 read / reset counter
+		case(0x20): // 0x20 read / reset counter
 		{
 			if(io >= COUNTER_PORTS)
 				return(build_reply(output_buffer_length, output_buffer, input, 3, 0, 0));
 
 			uint32_t counter = counters[io];
 
-			if(command != 0x10)
+			if(command == 0x20)
 				counters[io] = 0;
-
-			if(command == 0x30)
-				return(build_reply(output_buffer_length, output_buffer, input, 0, 0, 0));
 
 			uint8_t replystring[4];
 
@@ -181,30 +215,7 @@ static void twi_callback(uint8_t buffer_size, volatile uint8_t input_buffer_leng
 			return(build_reply(output_buffer_length, output_buffer, input, 0, sizeof(replystring), replystring));
 		}
 
-		case(0x20):	// write counter
-		{
-			if(input_buffer_length < 5)
-				return(build_reply(output_buffer_length, output_buffer, input, 4, 0, 0));
-
-			if(io >= COUNTER_PORTS)
-				return(build_reply(output_buffer_length, output_buffer, input, 3, 0, 0));
-
-			uint32_t counter;
-
-			counter = input_buffer[1];
-			counter <<= 8;
-			counter |= input_buffer[2];
-			counter <<= 8;
-			counter |= input_buffer[3];
-			counter <<= 8;
-			counter |= input_buffer[4];
-
-			counters[io] = counter;
-
-			return(build_reply(output_buffer_length, output_buffer, input, 0, 0, 0));
-		}
-
-		case(0x50):	//	read input
+		case(0x30):	//	read input
 		{
 			uint8_t value;
 
@@ -216,44 +227,7 @@ static void twi_callback(uint8_t buffer_size, volatile uint8_t input_buffer_leng
 			return(build_reply(output_buffer_length, output_buffer, input, 0, 1, &value));
 		}
 
-		case(0x60):	//	write output
-		{
-			if(input_buffer_length < 2)
-				return(build_reply(output_buffer_length, output_buffer, input, 4, 0, 0));
-
-			if(io >= OUTPUT_PORTS)
-				return(build_reply(output_buffer_length, output_buffer, input, 3, 0, 0));
-
-			if(input_buffer[1])
-				*output_ports[io].port |= (1 << output_ports[io].bit);
-			else
-				*output_ports[io].port &= ~(1 << output_ports[io].bit);
-
-			return(build_reply(output_buffer_length, output_buffer, input, 0, 0, 0));
-		}
-
-		case(0x70):	//	read pwm
-		{
-			if(io >= OUTPUT_PORTS)
-				return(build_reply(output_buffer_length, output_buffer, input, 3, 0, 0));
-
-			uint8_t slot;
-
-			for(slot = 0; slot < OUTPUT_PORTS; slot++)
-				if(soft_pwm_slots[slot].ioport == io)
-					break;
-
-			if(slot >= OUTPUT_PORTS)
-				return(build_reply(output_buffer_length, output_buffer, input, 3, 0, 0));
-
-			uint8_t duty;
-
-			duty = soft_pwm_slots[slot].duty;
-
-			return(build_reply(output_buffer_length, output_buffer, input, 0, sizeof(duty), &duty));
-		}
-
-		case(0x80):	//	write pwm
+		case(0x40):	//	write output / softpwm
 		{
 			if(input_buffer_length < 2)
 				return(build_reply(output_buffer_length, output_buffer, input, 4, 0, 0));
@@ -342,7 +316,28 @@ static void twi_callback(uint8_t buffer_size, volatile uint8_t input_buffer_leng
 			return(build_reply(output_buffer_length, output_buffer, input, 0, sizeof(soft_pwm_slots), (uint8_t *)soft_pwm_slots));
 		}
 
-		case(0xb0):	// start adc conversion
+		case(0x50):	//	read output / softpwm
+		{
+			if(io >= OUTPUT_PORTS)
+				return(build_reply(output_buffer_length, output_buffer, input, 3, 0, 0));
+
+			uint8_t slot;
+
+			for(slot = 0; slot < OUTPUT_PORTS; slot++)
+				if(soft_pwm_slots[slot].ioport == io)
+					break;
+
+			if(slot >= OUTPUT_PORTS)
+				return(build_reply(output_buffer_length, output_buffer, input, 3, 0, 0));
+
+			uint8_t duty;
+
+			duty = soft_pwm_slots[slot].duty;
+
+			return(build_reply(output_buffer_length, output_buffer, input, 0, sizeof(duty), &duty));
+		}
+
+		case(0xc0):	// start adc conversion
 		{
 			if(io > 1)
 				return(build_reply(output_buffer_length, output_buffer, input, 3, 0, 0));
@@ -351,45 +346,7 @@ static void twi_callback(uint8_t buffer_size, volatile uint8_t input_buffer_leng
 			return(build_reply(output_buffer_length, output_buffer, input, 0, 0, 0));
 		}
 
-		case(0xc0):	// misc
-		{
-			uint16_t value;
-
-			switch(io)
-			{
-				case(0x00):	// 0xc0 read ADC
-				{
-					value = ADCW;
-
-					if(ADCSRA & _BV(ADSC))	// conversion not ready
-						return(build_reply(output_buffer_length, output_buffer, input, 5, 0, 0));
-
-					adc_stop();
-
-					uint8_t replystring[2];
-
-					replystring[0] = (value & 0xff00) >> 8;
-					replystring[1] = (value & 0x00ff) >> 0;
-
-					return(build_reply(output_buffer_length, output_buffer, input, 0, sizeof(replystring), replystring));
-				}
-
-				case(0x01): // 0xc1 read timer0 status
-				{
-					uint8_t value = timer0_status();
-					return(build_reply(output_buffer_length, output_buffer, input, 0, 1, &value));
-				}
-
-				default:
-				{
-					return(build_reply(output_buffer_length, output_buffer, input, 2, 0, 0));
-				}
-			}
-
-			return(build_reply(output_buffer_length, output_buffer, input, 2, 0, 0));
-		}
-
-		case(0xd0):	// twi stats
+		case(0xf0):	// twi stats
 		{
 			uint8_t		replystring[2];
 			uint16_t	stats;
@@ -450,26 +407,13 @@ static void twi_callback(uint8_t buffer_size, volatile uint8_t input_buffer_leng
 
 			return(build_reply(output_buffer_length, output_buffer, input, 0, sizeof(replystring), replystring));
 		}
-
-		case(0xe0):	//	read output
-		{
-			uint8_t value;
-
-			if(io >= OUTPUT_PORTS)
-				return(build_reply(output_buffer_length, output_buffer, input, 3, 0, 0));
-
-			value = !!(*output_ports[io].port & (1 << output_ports[io].bit));
-
-			return(build_reply(output_buffer_length, output_buffer, input, 0, 1, &value));
-		}
-
 		default:
 		{
 			return(build_reply(output_buffer_length, output_buffer, input, 2, 0, 0));
 		}
 	}
 
-	return(build_reply(output_buffer_length, output_buffer, input, 5, 0, 0));
+	return(build_reply(output_buffer_length, output_buffer, input, 2, 0, 0));
 }
 
 int main(void)
