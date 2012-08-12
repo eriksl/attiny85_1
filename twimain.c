@@ -7,88 +7,78 @@
 #include "ioports.h"
 #include "adc.h"
 #include "timer0.h"
-#include "watchdog.h"
 
 volatile static struct
 {
-	uint8_t	pwmport;
+	uint8_t	ioport;
 	uint8_t	duty;
-} pwm_slots[PWM_PORTS];
+} soft_pwm_slots[OUTPUT_PORTS];
 
-volatile static uint8_t current_slot;
+volatile static uint32_t	counters[COUNTER_PORTS];
+volatile static uint8_t		current_slot;
 
-ISR(TIMER0_COMPA_vect)		// overflow
+ISR(TIMER0_COMPA_vect)		// timer 0 softpwm overflow
 {
 	uint8_t slot, slot_port, slot_duty, active = 0;
 
-	for(slot = 0; slot < PWM_PORTS; slot++)
+	for(slot = 0; slot < OUTPUT_PORTS; slot++)
 	{
-		slot_port	= pwm_slots[slot].pwmport;
-		slot_duty	= pwm_slots[slot].duty;
+		slot_port	= soft_pwm_slots[slot].ioport;
+		slot_duty	= soft_pwm_slots[slot].duty;
 
 		if((slot_duty != 0) && (slot_duty != 0xff))
 			active++;
 
 		if(slot_duty == 0)					// pwm duty == 0, port is off, set it off
-			*pwm_ports[slot_port].port &= ~_BV(pwm_ports[slot_port].bit);
+			*output_ports[slot_port].port &= ~_BV(output_ports[slot_port].bit);
 		else								// else set the port on
-			*pwm_ports[slot_port].port |=  _BV(pwm_ports[slot_port].bit);
+			*output_ports[slot_port].port |=  _BV(output_ports[slot_port].bit);
 	}
 
 	if(active == 0)
 		timer0_stop();
 }
 
-ISR(TIMER0_COMPB_vect)		// trigger
+ISR(TIMER0_COMPB_vect)		// timer 0 softpwm trigger
 {
 	uint8_t		slot_port;
 	uint8_t		slot_duty, next_duty;
 
-	slot_duty = pwm_slots[current_slot].duty;
+	slot_duty = soft_pwm_slots[current_slot].duty;
 
 	if((slot_duty != 0) && (slot_duty != 0xff))			// only process active slots
 	{
-		for(; current_slot < PWM_PORTS; current_slot++)	// process all slots with this duty value
+		for(; current_slot < OUTPUT_PORTS; current_slot++)	// process all slots with this duty value
 		{
-			if(pwm_slots[current_slot].duty != slot_duty)
+			if(soft_pwm_slots[current_slot].duty != slot_duty)
 				break;
 
-			slot_port = pwm_slots[current_slot].pwmport;
-			*pwm_ports[slot_port].port &= ~_BV(pwm_ports[slot_port].bit);
+			slot_port = soft_pwm_slots[current_slot].ioport;
+			*output_ports[slot_port].port &= ~_BV(output_ports[slot_port].bit);
 		}
 	}
 
-	if(current_slot >= PWM_PORTS)
+	if(current_slot >= OUTPUT_PORTS)
 		current_slot = 0;
 
 	next_duty = 0;
 
-	for(; current_slot < PWM_PORTS; current_slot++)		// skip slots with duty 0 (off) and duty 0xff (always on)
+	for(; current_slot < OUTPUT_PORTS; current_slot++)		// skip slots with duty 0 (off) and duty 0xff (always on)
 	{
-		next_duty = pwm_slots[current_slot].duty;
+		next_duty = soft_pwm_slots[current_slot].duty;
 
 		if((next_duty != 0xff) && (next_duty != 0))
 			break;
 	}
 
-	if(current_slot >= PWM_PORTS)
+	if(current_slot >= OUTPUT_PORTS)
 	{
 		current_slot = 0;
-		next_duty = pwm_slots[current_slot].duty;
+		next_duty = soft_pwm_slots[current_slot].duty;
 	}
 
 	timer0_set_trigger(next_duty);
 }
-
-#if 0
-ISR(WDT_vect)
-{
-	setup_wdt();
-
-	PORTA &= ~0x18;
-	PORTB &= ~0x18;
-}
-#endif
 
 ISR(PCINT_vect)
 {
@@ -99,16 +89,16 @@ ISR(PCINT_vect)
 
 	if(!port[0] && !port[1])
 	{
-		counter_ports[0].counter = 0;
-		counter_ports[1].counter = 0;
+		counters[0] = 0;
+		counters[1] = 0;
 		return;
 	}
 
 	if(!port[0])
-		counter_ports[0].counter++;
+		counters[0]++;
 
 	if(!port[1])
-		counter_ports[1].counter++;
+		counters[1]++;
 }
 
 static void build_reply(uint8_t volatile *output_buffer_length, volatile uint8_t *output_buffer,
@@ -117,19 +107,18 @@ static void build_reply(uint8_t volatile *output_buffer_length, volatile uint8_t
 	uint8_t checksum;
 	uint8_t ix;
 
-	output_buffer[0] = 4 + reply_length;
-	output_buffer[1] = command;
+	output_buffer[0] = 3 + reply_length;
+	output_buffer[1] = error_code;
 	output_buffer[2] = command;
-	output_buffer[3] = error_code;
 
 	for(ix = 0; ix < reply_length; ix++)
-		output_buffer[4 + ix] = reply_string[ix];
+		output_buffer[3 + ix] = reply_string[ix];
 
-	for(ix = 0, checksum = 0; ix < (4 + reply_length); ix++)
+	for(ix = 1, checksum = 0; ix < (3 + reply_length); ix++)
 		checksum += output_buffer[ix];
 
-	output_buffer[4 + reply_length] = checksum;
-	*output_buffer_length = 4 + reply_length + 1;
+	output_buffer[3 + reply_length] = checksum;
+	*output_buffer_length = 3 + reply_length + 1;
 }
 
 static void twi_callback(uint8_t buffer_size, volatile uint8_t input_buffer_length, const volatile uint8_t *input_buffer,
@@ -174,10 +163,10 @@ static void twi_callback(uint8_t buffer_size, volatile uint8_t input_buffer_leng
 			if(io >= COUNTER_PORTS)
 				return(build_reply(output_buffer_length, output_buffer, input, 3, 0, 0));
 
-			uint32_t counter = counter_ports[io].counter;
+			uint32_t counter = counters[io];
 
 			if(command != 0x10)
-				counter_ports[io].counter = 0;
+				counters[io] = 0;
 
 			if(command == 0x30)
 				return(build_reply(output_buffer_length, output_buffer, input, 0, 0, 0));
@@ -210,7 +199,7 @@ static void twi_callback(uint8_t buffer_size, volatile uint8_t input_buffer_leng
 			counter <<= 8;
 			counter |= input_buffer[4];
 
-			counter_ports[io].counter = counter;
+			counters[io] = counter;
 
 			return(build_reply(output_buffer_length, output_buffer, input, 0, 0, 0));
 		}
@@ -245,21 +234,21 @@ static void twi_callback(uint8_t buffer_size, volatile uint8_t input_buffer_leng
 
 		case(0x70):	//	read pwm
 		{
-			if(io >= PWM_PORTS)
+			if(io >= OUTPUT_PORTS)
 				return(build_reply(output_buffer_length, output_buffer, input, 3, 0, 0));
 
 			uint8_t slot;
 
-			for(slot = 0; slot < PWM_PORTS; slot++)
-				if(pwm_slots[slot].pwmport == io)
+			for(slot = 0; slot < OUTPUT_PORTS; slot++)
+				if(soft_pwm_slots[slot].ioport == io)
 					break;
 
-			if(slot >= PWM_PORTS)
+			if(slot >= OUTPUT_PORTS)
 				return(build_reply(output_buffer_length, output_buffer, input, 3, 0, 0));
 
 			uint8_t duty;
 
-			duty = pwm_slots[slot].duty;
+			duty = soft_pwm_slots[slot].duty;
 
 			return(build_reply(output_buffer_length, output_buffer, input, 0, sizeof(duty), &duty));
 		}
@@ -269,7 +258,7 @@ static void twi_callback(uint8_t buffer_size, volatile uint8_t input_buffer_leng
 			if(input_buffer_length < 2)
 				return(build_reply(output_buffer_length, output_buffer, input, 4, 0, 0));
 
-			if(io >= PWM_PORTS)
+			if(io >= OUTPUT_PORTS)
 				return(build_reply(output_buffer_length, output_buffer, input, 3, 0, 0));
 
 			uint8_t slot, port, new_duty;
@@ -281,52 +270,52 @@ static void twi_callback(uint8_t buffer_size, volatile uint8_t input_buffer_leng
 			// find the slot that is using this io port
 			// then assign i/o port and duty cycle
 
-			for(slot = 0; slot < PWM_PORTS; slot++)
-				if(pwm_slots[slot].pwmport == io)
+			for(slot = 0; slot < OUTPUT_PORTS; slot++)
+				if(soft_pwm_slots[slot].ioport == io)
 					break;
 
-			if(slot >= PWM_PORTS) // "unknown error"
+			if(slot >= OUTPUT_PORTS) // "unknown error"
 				return(build_reply(output_buffer_length, output_buffer, input, 6, 0, 0));
 
-			pwm_slots[slot].duty = new_duty;
+			soft_pwm_slots[slot].duty = new_duty;
 
 			// If duty = 0 or duty = 0xff, turn this ports off/on immediately.
 			// The timer may not get restarted when all ports are inactive,
 			// so do it here.
 
-			port = pwm_slots[slot].pwmport;
+			port = soft_pwm_slots[slot].ioport;
 
 			if(new_duty == 0)
-				*pwm_ports[port].port &= ~_BV(pwm_ports[port].bit);
+				*output_ports[port].port &= ~_BV(output_ports[port].bit);
 			else
 				if(new_duty == 0xff)
-					*pwm_ports[port].port |= _BV(pwm_ports[port].bit);
+					*output_ports[port].port |= _BV(output_ports[port].bit);
 
 			// Now (re-)sort the slots.
 			// Using bubble sort is okay because there are so little entries and it uses very little memory.
 			// Bubble higher duty values and unused elements to the end.
 
-			uint8_t duty[2], pwmport[2], dirty;
+			uint8_t duty[2], ioport[2], dirty;
 
 			do
 			{
 				dirty = 0;
 
-				for(slot = 0; slot < (PWM_PORTS - 1); slot++)
+				for(slot = 0; slot < (OUTPUT_PORTS - 1); slot++)
 				{
-					duty[0]		= pwm_slots[slot + 0].duty;
-					duty[1]		= pwm_slots[slot + 1].duty;
+					duty[0]		= soft_pwm_slots[slot + 0].duty;
+					duty[1]		= soft_pwm_slots[slot + 1].duty;
 
-					pwmport[0]	= pwm_slots[slot + 0].pwmport;
-					pwmport[1]	= pwm_slots[slot + 1].pwmport;
+					ioport[0]	= soft_pwm_slots[slot + 0].ioport;
+					ioport[1]	= soft_pwm_slots[slot + 1].ioport;
 
 					if(duty[0] > duty[1])
 					{
-						pwm_slots[slot + 0].duty	= duty[1];
-						pwm_slots[slot + 1].duty	= duty[0];
+						soft_pwm_slots[slot + 0].duty	= duty[1];
+						soft_pwm_slots[slot + 1].duty	= duty[0];
 
-						pwm_slots[slot + 0].pwmport	= pwmport[1];
-						pwm_slots[slot + 1].pwmport	= pwmport[0];
+						soft_pwm_slots[slot + 0].ioport	= ioport[1];
+						soft_pwm_slots[slot + 1].ioport	= ioport[0];
 
 						dirty = 1;
 					}
@@ -335,22 +324,22 @@ static void twi_callback(uint8_t buffer_size, volatile uint8_t input_buffer_leng
 
 			// Find first active duty slot (duty != 0 && duty != 0xff)
 
-			for(current_slot = 0; current_slot < PWM_PORTS; current_slot++)
+			for(current_slot = 0; current_slot < OUTPUT_PORTS; current_slot++)
 			{
-				new_duty = pwm_slots[current_slot].duty;
+				new_duty = soft_pwm_slots[current_slot].duty;
 
 				if((new_duty != 0) && (new_duty != 0xff))
 					break;
 			}
 
-			if(current_slot < PWM_PORTS)
+			if(current_slot < OUTPUT_PORTS)
 			{
 				timer0_reset_counter();
 				timer0_set_trigger(new_duty);
 				timer0_start();
 			}
 
-			return(build_reply(output_buffer_length, output_buffer, input, 0, sizeof(pwm_slots), (uint8_t *)pwm_slots));
+			return(build_reply(output_buffer_length, output_buffer, input, 0, sizeof(soft_pwm_slots), (uint8_t *)soft_pwm_slots));
 		}
 
 		case(0xb0):	// start adc conversion
@@ -485,9 +474,6 @@ static void twi_callback(uint8_t buffer_size, volatile uint8_t input_buffer_leng
 
 int main(void)
 {
-	DDRA = _BV(DDA3) | _BV(DDA4);
-	DDRB = _BV(DDB3) | _BV(DDB4);
-
 	PCMSK0 = _BV(PCINT6);	//	PCINT on pa6
 	PCMSK1 = _BV(PCINT14);	//	PCINT on pb6
 	GIMSK  = _BV(PCIE1);	//	enable PCINT
@@ -501,20 +487,24 @@ int main(void)
 				(0 << PRUSI)	|	// usi
 				(0 << PRADC);		// adc / analog comperator
 
-	// watchdog_setup();
-	// watchdog_start();
+	uint8_t slot;
+
+	DDRA = 0;
+	DDRB = 0;
+
+	for(slot = 0; slot < OUTPUT_PORTS; slot++)
+		*output_ports[slot].ddr |= _BV(output_ports[slot].bit);
+
+	for(slot = 0; slot < OUTPUT_PORTS; slot++)
+	{
+		soft_pwm_slots[slot].duty     = 0;
+		soft_pwm_slots[slot].ioport	= slot;
+	}
+
+	for(slot = 0; slot < COUNTER_PORTS; slot++)
+		counters[slot] = 0;
 
 	adc_init();
-
-	// set all pwm slots unassigned
-
-	uint8_t pwmslot;
-
-	for(pwmslot = 0; pwmslot < PWM_PORTS; pwmslot++)
-	{
-		pwm_slots[pwmslot].duty     = 0;
-		pwm_slots[pwmslot].pwmport  = pwmslot;
-	}
 
 	// 8 mhz / 256 / 256 = 122
 

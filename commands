@@ -25,11 +25,15 @@
 			0	1	0	1	0						0x50	read input, returns 1 byte
 			0	1	1	0	0						0x60	write output, supply 1 byte
 
-			0	1	1	1	0						0x70	read pwm value, returns 1 byte
-			1	0	0	0	0						0x80	write pwm value, supply 1 byte
+			0	1	1	1	0						0x70	read softpwm value, returns 1 byte
+			1	0	0	0	0						0x80	write softpwm value, supply 1 byte
+			0	1	1	1	1						0x78	read hardpwm value, returns 2 bytes
+			1	0	0	0	1						0x88	write hardpwm value, supply 2 bytes
 
-			1	0	0	1	0						0x90	read pwm mode, returns 1 byte
-			1	0	1	0	0						0xa0	write pwm mode, supply 1 byte
+			1	0	0	1	0						0x90	read softpwm mode, returns 1 byte
+			1	0	1	0	0						0xa0	write softpwm mode, supply 1 byte
+			1	0	0	1	1						0x98	read hardpwm mode, returns 1 byte
+			1	0	1	0	1						0xa8	write hardpwm mode, supply 1 byte
 
 			1	0	1	1	0						0xb0	start adc conversion
 			1	1	0	0	0		0	0	0		0xc0	read adc, returns 2 bytes
@@ -46,7 +50,7 @@
 
 			1	1	1	0	0						0xe0	read output, returns 1 byte
 
-	pwm mode =
+	softpwm mode =
 			0	on
 			1	fade in
 			2	fade out
@@ -54,12 +58,11 @@
 
 *** REPLY ***
 	
-	byte	length of reply - this length byte
-	byte	command this reply relates to
-	byte	command this reply relates to (repeat)
+	byte	length of reply minus this length byte
 	byte	error code
+	byte	command this reply relates to
 	byte*	reply information
-	byte	checksum
+	byte	checksum (skip length byte)
 
 	error codes =
 			0	ok
@@ -84,19 +87,18 @@
 			0	b6
 			1	a6
 
-		outputs:
+		outputs/softpwm
 
-			0	b3
+			0	b2 (shared sck)
 			1	b4
 			2	a3
 			3	a4
 
 		pwms:
 
-			0	b3
-			1	b4
-			2	a3
-			3	a4
+			0	b1 (oc1a) (shared miso)
+			1	b3 (oc1b)
+			2	b5 (oc1d)
 
 		adcs:
 
@@ -112,8 +114,8 @@
 			0x4x	read/reset counter
 			0x5x	read input
 			0x6x	write output
-			0x7x	read pwm
-			0x8x	write pwm
+			0x7x	read softpwm
+			0x8x	write softpwm
 			0xbx	start adc conversion
 			0xc0	read adc
 			0xd0	twi stats - disable
@@ -124,4 +126,4 @@
 			0xd5	twi stats - read overflow conditions
 			0xd6	twi stats - read local frames
 			0xd7	twi stats - read idle calls
-			0xe0	read output				x:0=b3/1=b4/2=a3/3=a4
+			0xe0	read output
