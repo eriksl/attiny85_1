@@ -9,12 +9,14 @@ PROGRAMMER	=		dragon_isp
 PRGFLAGS	=		-b 0 -P usb
 
 PROGRAM		=		twimain
-OBJFILES	=		$(PROGRAM).o adc.o ioports.o timer0.o pwm_timer1.o
-HEADERS		=		adc.h ioports.h timer0.h pwm_timer1.h
+OBJFILES	=		adc.o ioports.o timer0.o pwm_timer1.o watchdog.o $(PROGRAM).o
+HEADERS		=		adc.h ioports.h timer0.h pwm_timer1.h watchdog.h
 HEXFILE		=		$(PROGRAM).hex
 ELFFILE		=		$(PROGRAM).elf
 PROGRAMMED	=		.programmed
-CFLAGS		=		-Wall -Winline -Os -fpack-struct -mmcu=$(MCU) -DF_CPU=8000000UL -I$(UTSBASE)
+CFLAGS		=		-Wall -Winline -O3 -mmcu=$(MCU) -DF_CPU=8000000UL -I$(UTSBASE) \
+					-fpack-struct -funroll-loops -funit-at-a-time -fno-keep-static-consts \
+					-frename-registers
 LD1FLAGS	=		-Wall -mmcu=$(MCU) -L$(UTSBASE) 
 LD2FLAGS	=		$(UTSLDLIB)
 
@@ -31,6 +33,10 @@ $(PROGRAM).o:		$(PROGRAM).c $(HEADERS)
 %.o:				%.c
 					@echo "CC $< -> $@"
 					@avr-gcc -c $(CFLAGS) $< -o $@
+
+%.s:				%.c
+					@echo "CC (ASM) $< -> $@"
+					@avr-gcc -S $(CFLAGS) $< -o $@
 
 adc.o:				adc.h
 ioports.o:			ioports.h

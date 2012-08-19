@@ -114,8 +114,10 @@
 			0x3x	read input
 			0x4x	write output / softpwm
 			0x5x	read output / softpwm
-			0x80	write pwm
-			0x90	read pwm
+			0x6x	write softpwm mode
+			0x7x	read softpwm mode
+			0x8x	write pwm
+			0x9x	read pwm
 			0xc0	start adc conversion
 			0xf0	twi stats - disable
 			0xf1	twi stats - enable
