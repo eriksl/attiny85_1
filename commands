@@ -14,7 +14,7 @@
 									...
 									1	1	1		0x07	i/o 7
 
-			0	0	0	0	0		0	0	0		0x00	identify, returns: 0x4a 0xfb AA BB 5*CC DD where AA=numeric device id, BB=firmware version, CC=ascii id string
+			0	0	0	0	0		0	0	0		0x00	identify, returns: 0x4a 0xfb AA BB CC {DD} where AA=numeric device id, BB=firmware version, CC=firmware revision, DD=ascii id string
 			0	0	0	0	0		0	0	1		0x01	read adc, returns 2 bytes
 			0	0	0	0	0		0	1	0		0x02	timer0 counter, returns 1 byte
 			0	0	0	0	0		0	1	1		0x03	timer1 counter, returns 2 bytes
@@ -73,7 +73,7 @@
 
 *** MODELS ***
 
-	MODEL 6 (ATTINY861A), VERSION 0
+	MODEL 6 (ATTINY861A), VERSION 1, REVISION 0
 
 		counters:
 
@@ -118,6 +118,8 @@
 			0x7x	read softpwm mode
 			0x8x	write pwm
 			0x9x	read pwm
+			0xax	write pwm mode
+			0xbx	read pwm mode
 			0xc0	start adc conversion
 			0xf0	twi stats - disable
 			0xf1	twi stats - enable

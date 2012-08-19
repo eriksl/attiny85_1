@@ -28,7 +28,7 @@ typedef struct
 	volatile	uint8_t		pwm_bit;
 	volatile	uint8_t		*compare_reg_high;
 	volatile	uint8_t		*compare_reg_low;
-}pwmport_t;
+} pwmport_t;
 
 enum
 {
