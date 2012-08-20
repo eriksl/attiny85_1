@@ -27,12 +27,12 @@ static	void		timer0_set_trigger(uint8_t);	// OCR0B
 
 static always_inline void timer0_reset_counter(void)
 {
-	TCNT0L = 0;
+	TCNT0 = 0;
 }
 
 static always_inline uint8_t timer0_get_counter(void)
 {
-	return(TCNT0L);
+	return(TCNT0);
 }
 
 static always_inline void timer0_set_max(uint8_t max_value)
