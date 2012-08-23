@@ -5,12 +5,11 @@ UTSLDLIB	=		-lusitwislave
 
 MCU			=		attiny85
 PROGRAMMER	=		dragon_isp
-#PROGRAMMER	=		dragon_pp
 PRGFLAGS	=		-b 0 -P usb
 
 PROGRAM		=		twimain
-OBJFILES	=		ioports.o timer0.o watchdog.o $(PROGRAM).o
-HEADERS		=		ioports.h timer0.h watchdog.h
+OBJFILES	=		ioports.o watchdog.o $(PROGRAM).o
+HEADERS		=		ioports.h watchdog.h
 HEXFILE		=		$(PROGRAM).hex
 ELFFILE		=		$(PROGRAM).elf
 PROGRAMMED	=		.programmed

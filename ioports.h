@@ -13,10 +13,8 @@ typedef struct
 enum
 {
 	INPUT_PORTS		= 1,
-	OUTPUT_PORTS	= 2,
 };
 
 extern const ioport_t input_ports[];
-extern const ioport_t output_ports[];
 
 #endif
