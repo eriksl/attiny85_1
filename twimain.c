@@ -110,7 +110,7 @@ static void twi_callback(uint8_t buffer_size, volatile uint8_t input_buffer_leng
 					static const uint8_t replystring[] =
 					{
 						0x4a, 0xfb,
-						0x05, 0x01, 0x00,
+						0x05, 0x01, 0x01,
 						't', '8', '5'
 					};
 
