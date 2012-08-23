@@ -10,7 +10,8 @@
 
 enum
 {
-	PWM_MODE_WATCHDOG_SCALER = WATCHDOG_PRESCALER_64K,
+	LED_OFF_WATCHDOG_SCALER = WATCHDOG_PRESCALER_2K,
+	LED_OFF_WATCHDOG_TIMEOUT = 16
 };
 
 typedef struct
@@ -21,11 +22,34 @@ typedef struct
 static			counter_meta_t	counters_meta[INPUT_PORTS];
 static	uint8_t	slot;
 
+static	uint8_t	led_timeout_command = 0;
+static	uint8_t	led_timeout_input	= 0;
+
 ISR(WDT_vect)
 {
-	PORTB &= ~(_BV(1) | _BV(4));
+	if(led_timeout_command > 1)
+		led_timeout_command--;
+	else
+	{
+		if(led_timeout_command == 1)
+		{
+			PORTB &= ~_BV(4);
+			led_timeout_command = 0;
+		}
+	}
 
-	watchdog_setup(PWM_MODE_WATCHDOG_SCALER);
+	if(led_timeout_input > 1)
+		led_timeout_input--;
+	else
+	{
+		if(led_timeout_input == 1)
+		{
+			PORTB &= ~_BV(1);
+			led_timeout_input = 0;
+		}
+	}
+
+	watchdog_setup(LED_OFF_WATCHDOG_SCALER);
 }
 
 ISR(PCINT0_vect)
@@ -33,6 +57,7 @@ ISR(PCINT0_vect)
 	uint8_t port;
 
 	PORTB |= _BV(1);
+	led_timeout_input = LED_OFF_WATCHDOG_TIMEOUT;
 
 	port = *input_ports[0].port & _BV(input_ports[0].bit);
 
@@ -68,6 +93,7 @@ static void twi_callback(uint8_t buffer_size, volatile uint8_t input_buffer_leng
 	uint8_t	io;
 
 	PORTB |= _BV(4);
+	led_timeout_command = LED_OFF_WATCHDOG_TIMEOUT;
 
 	if(input_buffer_length < 1)
 		return(build_reply(output_buffer_length, output_buffer, 0, 1, 0, 0));
@@ -243,7 +269,9 @@ int main(void)
 
 	PORTB |= _BV(1) | _BV(4);
 
-	watchdog_setup(PWM_MODE_WATCHDOG_SCALER);
+	led_timeout_input = led_timeout_command = 255;
+
+	watchdog_setup(LED_OFF_WATCHDOG_SCALER);
 	watchdog_start();
 
 	usi_twi_slave(0x02, 1, twi_callback, 0);
