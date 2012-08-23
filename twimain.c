@@ -6,12 +6,11 @@
 #include <usitwislave.h>
 
 #include "ioports.h"
-#include "watchdog.h"
+#include "timer0_simple.h"
 
 enum
 {
-	LED_OFF_WATCHDOG_SCALER = WATCHDOG_PRESCALER_2K,
-	LED_OFF_WATCHDOG_TIMEOUT = 16
+	LED_OFF_TIMEOUT = 64
 };
 
 typedef struct
@@ -25,7 +24,7 @@ static	uint8_t	slot;
 static	uint8_t	led_timeout_command = 0;
 static	uint8_t	led_timeout_input	= 0;
 
-ISR(WDT_vect)
+ISR(TIMER0_OVF_vect) // timer0 overflow
 {
 	if(led_timeout_command > 1)
 		led_timeout_command--;
@@ -48,8 +47,6 @@ ISR(WDT_vect)
 			led_timeout_input = 0;
 		}
 	}
-
-	watchdog_setup(LED_OFF_WATCHDOG_SCALER);
 }
 
 ISR(PCINT0_vect)
@@ -57,7 +54,7 @@ ISR(PCINT0_vect)
 	uint8_t port;
 
 	PORTB |= _BV(1);
-	led_timeout_input = LED_OFF_WATCHDOG_TIMEOUT;
+	led_timeout_input = LED_OFF_TIMEOUT;
 
 	port = *input_ports[0].port & _BV(input_ports[0].bit);
 
@@ -93,7 +90,7 @@ static void twi_callback(uint8_t buffer_size, volatile uint8_t input_buffer_leng
 	uint8_t	io;
 
 	PORTB |= _BV(4);
-	led_timeout_command = LED_OFF_WATCHDOG_TIMEOUT;
+	led_timeout_command = LED_OFF_TIMEOUT;
 
 	if(input_buffer_length < 1)
 		return(build_reply(output_buffer_length, output_buffer, 0, 1, 0, 0));
@@ -247,7 +244,7 @@ int main(void)
 				(0 << 5)		|
 				(0 << 4)		|
 				(1 << PRTIM1)	|	// timer1
-				(1 << PRTIM0)	|	// timer0
+				(0 << PRTIM0)	|	// timer0
 				(0 << PRUSI)	|	// usi
 				(1 << PRADC);		// adc / analog comperator
 
@@ -269,10 +266,10 @@ int main(void)
 
 	PORTB |= _BV(1) | _BV(4);
 
-	led_timeout_input = led_timeout_command = 255;
+	led_timeout_input = led_timeout_command = LED_OFF_TIMEOUT;
 
-	watchdog_setup(LED_OFF_WATCHDOG_SCALER);
-	watchdog_start();
+	timer0_init(TIMER0_PRESCALER_64);
+	timer0_start();
 
 	usi_twi_slave(0x02, 1, twi_callback, 0);
 
