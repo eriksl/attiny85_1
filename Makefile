@@ -1,23 +1,17 @@
-BASE		=		/home/erik/avr
-LIBDIR		=		$(BASE)
-UTSBASE		=		$(LIBDIR)/usitwislave
-UTSLDLIB	=		-lusitwislave
-
 MCU			=		attiny85
 PROGRAMMER	=		dragon_isp
 PRGFLAGS	=		-b 0 -P usb
 
 PROGRAM		=		twimain
-OBJFILES	=		ioports.o timer0_simple.o $(PROGRAM).o
-HEADERS		=		ioports.h timer0_simple.o
+OBJFILES	=		ioports.o timer0_simple.o usitwislave/usitwislave.o $(PROGRAM).o
+HEADERS		=		ioports.h timer0_simple.h usitwislave/usitwislave_devices.h usitwislave/usitwislave.h
 HEXFILE		=		$(PROGRAM).hex
 ELFFILE		=		$(PROGRAM).elf
 PROGRAMMED	=		.programmed
-CFLAGS		=		-Wall -Winline -O3 -mmcu=$(MCU) -DF_CPU=8000000UL -I$(UTSBASE) \
+CFLAGS		=		-Wall -Winline -O3 -mmcu=$(MCU) -DF_CPU=8000000UL -Iusitwislave \
 					-fpack-struct -funroll-loops -funit-at-a-time -fno-keep-static-consts \
 					-frename-registers
-LD1FLAGS	=		-Wall -mmcu=$(MCU) -L$(UTSBASE) 
-LD2FLAGS	=		$(UTSLDLIB)
+LDFLAGS		=		-Wall -mmcu=$(MCU)
 
 .PHONY:				all clean hex
 .SUFFIXES:
@@ -37,12 +31,13 @@ $(PROGRAM).o:		$(PROGRAM).c $(HEADERS)
 					@echo "CC (ASM) $< -> $@"
 					@avr-gcc -S $(CFLAGS) $< -o $@
 
-ioports.o:			ioports.h
-timer0_simple.o:	timer0_simple.h
+ioports.o:					ioports.h
+timer0_simple.o:			timer0_simple.h
+usitwislave/usitwislave.o:	usitwislave/usitwislave.h usitwislave/usitwislave_devices.h 
 
 $(ELFFILE):			$(OBJFILES)
 					@echo "LD $< -> $@"
-					@avr-gcc $(LD1FLAGS) $(OBJFILES) $(LD2FLAGS) -o $@
+					@avr-gcc $(LDFLAGS) $(OBJFILES) -o $@
 
 $(HEXFILE):			$(ELFFILE)
 					@echo "OBJCOPY $< -> $@"

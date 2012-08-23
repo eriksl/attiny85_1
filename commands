@@ -173,10 +173,10 @@
 			0x1x	read counter
 			0x2x	read / reset counter
 			0x3x	read input
-			0x4x	write output / softpwm
-			0x5x	read output / softpwm
-			0x6x	write softpwm mode
-			0x7x	read softpwm mode
+			0x4x	write output / softpwm (not on version 1)
+			0x5x	read output / softpwm (not on version 1)
+			0x6x	write softpwm mode (not on version 1)
+			0x7x	read softpwm mode (not on version 1)
 			0xf0	twi stats - disable
 			0xf1	twi stats - enable
 			0xf2	twi stats - read start conditions
