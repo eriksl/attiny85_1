@@ -73,64 +73,7 @@
 
 *** MODELS ***
 
-	MODEL 6 (ATTINY861A), VERSION 1, REVISION 0
-
-		counters:
-
-			0	b6
-			1	a6
-
-		inputs:
-
-			0	b6
-			1	a6
-
-		outputs/softpwm
-
-			0	b2 (shared sck)
-			1	b4
-			2	a3
-			3	a4
-
-		pwms:
-
-			0	b1 (oc1a) (shared miso)
-			1	b3 (oc1b)
-			2	b5 (oc1d)
-
-		adcs:
-
-			0	a7
-			1	temperature
-
-		commands
-
-			0x00	identify
-			0x01	read adc	
-			0x02	timer0 counter
-			0x03	timer1 counter
-			0x1x	read counter
-			0x2x	read / reset counter
-			0x3x	read input
-			0x4x	write output / softpwm
-			0x5x	read output / softpwm
-			0x6x	write softpwm mode
-			0x7x	read softpwm mode
-			0x8x	write pwm
-			0x9x	read pwm
-			0xax	write pwm mode
-			0xbx	read pwm mode
-			0xc0	start adc conversion
-			0xf0	twi stats - disable
-			0xf1	twi stats - enable
-			0xf2	twi stats - read start conditions
-			0xf3	twi stats - read stop conditions
-			0xf4	twi stats - read error conditions
-			0xf5	twi stats - read overflow conditions
-			0xf6	twi stats - read local frames
-			0xf7	twi stats - read idle calls
-
-	MODEL 5 (ATTINY85), VERSION 1, REVISION 0
+	MODEL 5 (ATTINY85), VERSION 0/1, REVISION 0
 
 		isp:
 
@@ -169,14 +112,15 @@
 		commands
 
 			0x00	identify
+			0x01	read temperature (firmware version 1 only)
 			0x02	timer0 counter
 			0x1x	read counter
 			0x2x	read / reset counter
 			0x3x	read input
-			0x4x	write output / softpwm (not on version 1)
-			0x5x	read output / softpwm (not on version 1)
-			0x6x	write softpwm mode (not on version 1)
-			0x7x	read softpwm mode (not on version 1)
+			0x4x	write output / softpwm (firmware version 0 only)
+			0x5x	read output / softpwm (firmware version 0 only)
+			0x6x	write softpwm mode (firmware version 0 only)
+			0x7x	read softpwm mode (firmware version 0 only)
 			0xf0	twi stats - disable
 			0xf1	twi stats - enable
 			0xf2	twi stats - read start conditions

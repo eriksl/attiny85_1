@@ -3,8 +3,8 @@ PROGRAMMER	=		dragon_isp
 PRGFLAGS	=		-b 0 -P usb
 
 PROGRAM		=		twimain
-OBJFILES	=		ioports.o timer0_simple.o usitwislave/usitwislave.o $(PROGRAM).o
-HEADERS		=		ioports.h timer0_simple.h usitwislave/usitwislave_devices.h usitwislave/usitwislave.h
+OBJFILES	=		adc_temp.o ioports.o timer0_simple.o usitwislave/usitwislave.o $(PROGRAM).o
+HEADERS		=		adc_temp.h ioports.h timer0_simple.h usitwislave/usitwislave_devices.h usitwislave/usitwislave.h
 HEXFILE		=		$(PROGRAM).hex
 ELFFILE		=		$(PROGRAM).elf
 PROGRAMMED	=		.programmed
@@ -31,6 +31,7 @@ $(PROGRAM).o:		$(PROGRAM).c $(HEADERS)
 					@echo "CC (ASM) $< -> $@"
 					@avr-gcc -S $(CFLAGS) $< -o $@
 
+adc_temp.o:					adc_temp.h
 ioports.o:					ioports.h
 timer0_simple.o:			timer0_simple.h
 usitwislave/usitwislave.o:	usitwislave/usitwislave.h usitwislave/usitwislave_devices.h 

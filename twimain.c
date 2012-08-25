@@ -7,6 +7,7 @@
 
 #include "ioports.h"
 #include "timer0_simple.h"
+#include "adc_temp.h"
 
 enum
 {
@@ -115,6 +116,17 @@ static void twi_callback(uint8_t buffer_size, volatile uint8_t input_buffer_leng
 					};
 
 					return(build_reply(output_buffer_length, output_buffer, input, 0, sizeof(replystring), replystring));
+				}
+
+				case(0x01):	// read temperature
+				{
+					uint16_t temp = adc_temperature_read();
+					uint8_t result[2];
+
+					result[0] = (temp & 0xff00) >> 8;
+					result[1] = (temp & 0x00ff) >> 0;
+
+					return(build_reply(output_buffer_length, output_buffer, input, 0, sizeof(result), result));
 				}
 
 				case(0x07): // extended command
@@ -246,15 +258,12 @@ int main(void)
 				(1 << PRTIM1)	|	// timer1
 				(0 << PRTIM0)	|	// timer0
 				(0 << PRUSI)	|	// usi
-				(1 << PRADC);		// adc / analog comperator
+				(0 << PRADC);		// adc / analog comperator
 
 	DDRB = _BV(1) | _BV(4);
 
 	for(slot = 0; slot < INPUT_PORTS; slot++)
-	{
-		*input_ports[slot].port |= _BV(input_ports[slot].bit);	// enable pullup
 		counters_meta[slot].counter = 0;
-	}
 
 	PORTB |= _BV(1) | _BV(4);
 
