@@ -42,13 +42,12 @@ ISR(PCINT0_vect)
 {
 	slot = *input_ports[0].port & _BV(input_ports[0].bit);
 
+	counters_meta[0].counter++;
+
 	if(slot)
-	{
-		PORTB |= _BV(1);
-		counters_meta[0].counter++;
-	}
-	else
 		PORTB &= ~_BV(1);
+	else
+		PORTB |= _BV(1);
 }
 
 static void build_reply(uint8_t volatile *output_buffer_length, volatile uint8_t *output_buffer,
@@ -251,7 +250,10 @@ int main(void)
 	DDRB = _BV(1) | _BV(4);
 
 	for(slot = 0; slot < INPUT_PORTS; slot++)
+	{
+		// *input_ports[slot].port |= _BV(input_ports[slot].bit);  // enable pullup
 		counters_meta[slot].counter = 0;
+	}
 
 	PORTB |= _BV(1) | _BV(4);
 
