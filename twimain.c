@@ -23,7 +23,6 @@ static			counter_meta_t	counters_meta[INPUT_PORTS];
 static	uint8_t	slot;
 
 static	uint8_t	led_timeout_command = 0;
-static	uint8_t	led_timeout_input	= 0;
 
 ISR(TIMER0_OVF_vect) // timer0 overflow
 {
@@ -37,30 +36,19 @@ ISR(TIMER0_OVF_vect) // timer0 overflow
 			led_timeout_command = 0;
 		}
 	}
-
-	if(led_timeout_input > 1)
-		led_timeout_input--;
-	else
-	{
-		if(led_timeout_input == 1)
-		{
-			PORTB &= ~_BV(1);
-			led_timeout_input = 0;
-		}
-	}
 }
 
 ISR(PCINT0_vect)
 {
-	uint8_t port;
+	slot = *input_ports[0].port & _BV(input_ports[0].bit);
 
-	PORTB |= _BV(1);
-	led_timeout_input = LED_OFF_TIMEOUT;
-
-	port = *input_ports[0].port & _BV(input_ports[0].bit);
-
-	if(!port)
+	if(slot)
+	{
+		PORTB |= _BV(1);
 		counters_meta[0].counter++;
+	}
+	else
+		PORTB &= ~_BV(1);
 }
 
 static void build_reply(uint8_t volatile *output_buffer_length, volatile uint8_t *output_buffer,
@@ -273,9 +261,9 @@ int main(void)
 
 	_delay_ms(250);
 
-	PORTB |= _BV(1) | _BV(4);
+	PORTB |= _BV(4);
 
-	led_timeout_input = led_timeout_command = LED_OFF_TIMEOUT;
+	led_timeout_command = LED_OFF_TIMEOUT;
 
 	timer0_init(TIMER0_PRESCALER_64);
 	timer0_start();
