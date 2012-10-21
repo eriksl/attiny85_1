@@ -28,6 +28,8 @@
 
 			0	0	1	1	0						0x30	read input, returns 1 byte
 
+			1	1	0	0	0		0	0	0		0xc0	start adc conversion, temperature sensor
+
 			1	1	1	1	0		0	0	0		0xf0	twi stats - disable
 			1	1	1	1	0		0	0	1		0xf1	twi stats - enable
 			1	1	1	1	0		0	1	0		0xf2	twi stats - read start conditions		returns AA BB as msb lsb.

@@ -187,14 +187,11 @@ static void twi_callback(uint8_t buffer_size, volatile uint8_t input_buffer_leng
                     return(build_reply(output_buffer_length, output_buffer, input, 0, sizeof(reply), (uint8_t *)&reply));
 				}
 
-				case(0x01):	// read temperature
+				case(0x01):	// read adc (temperature)
 				{
 					uint16_t temp = adc_temperature_read();
 					uint8_t result[2];
-
-					result[0] = (temp & 0xff00) >> 8;
-					result[1] = (temp & 0x00ff) >> 0;
-
+					put_word(temp, result);
 					return(build_reply(output_buffer_length, output_buffer, input, 0, sizeof(result), result));
 				}
 
@@ -224,12 +221,7 @@ static void twi_callback(uint8_t buffer_size, volatile uint8_t input_buffer_leng
 				counters_meta[io].counter = 0;
 
 			uint8_t replystring[4];
-
-			replystring[0] = (counter & 0xff000000) >> 24;
-			replystring[1] = (counter & 0x00ff0000) >> 16;
-			replystring[2] = (counter & 0x0000ff00) >> 8;
-			replystring[3] = (counter & 0x000000ff) >> 0;
-
+			put_long(counter, replystring);
 			return(build_reply(output_buffer_length, output_buffer, input, 0, sizeof(replystring), replystring));
 		}
 
@@ -243,6 +235,14 @@ static void twi_callback(uint8_t buffer_size, volatile uint8_t input_buffer_leng
 			value = !!(*input_ports[io].port & (1 << input_ports[io].bit));
 
 			return(build_reply(output_buffer_length, output_buffer, input, 0, 1, &value));
+		}
+
+		case(0xc0):	// select / read / start analog input (no-op)
+		{
+			if(io > 0)
+				return(build_reply(output_buffer_length, output_buffer, input, 3, 0, 0));
+
+			return(build_reply(output_buffer_length, output_buffer, input, 0, 0, 0));
 		}
 
 		case(0xf0):	// twi stats
@@ -301,9 +301,7 @@ static void twi_callback(uint8_t buffer_size, volatile uint8_t input_buffer_leng
 				}
 			}
 
-			replystring[0] = (stats & 0xff00) >> 8;
-			replystring[1] = (stats & 0x00ff) >> 0;
-
+			put_word(stats, replystring);
 			return(build_reply(output_buffer_length, output_buffer, input, 0, sizeof(replystring), replystring));
 		}
 		default:
