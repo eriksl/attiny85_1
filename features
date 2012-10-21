@@ -14,11 +14,11 @@
 									...
 									1	1	1		0x07	i/o 7
 
-            0   0   0   0   0       0   0   0       0x00    identify, returns: 0x00 0x00 0x4a 0xfb AA BB CC {DD} where
-                                                                    AA[4] = numeric device id
-                                                                    BB[5] = firmware version
-                                                                    CC[6] = firmware revision
-                                                                    DD[7] = ascii id string
+			0	0	0	0	0		0	0	0		0x00	identify, returns: 0x00 0x00 0x4a 0xfb AA BB CC {DD} where
+																	AA[4] = numeric device id
+																	BB[5] = firmware version
+																	CC[6] = firmware revision
+																	DD[7] = ascii id string
 			0	0	0	0	0		0	0	1		0x01	read adc, returns 2 bytes
 			0	0	0	0	0		0	1	0		0x02	timer0 counter, returns 1 byte
 			0	0	0	0	0		1	1	1		0x07	extended command, rest follows after this byte
