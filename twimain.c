@@ -352,7 +352,7 @@ int main(void)
 	timer0_init(TIMER0_PRESCALER_64);
 	timer0_start();
 
-	usi_twi_slave(0x02, 1, twi_callback, 0);
+	usi_twi_slave(0x03, 1, twi_callback, 0);
 
 	return(0);
 }
