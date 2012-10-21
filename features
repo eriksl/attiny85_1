@@ -14,28 +14,19 @@
 									...
 									1	1	1		0x07	i/o 7
 
-			0	0	0	0	0		0	0	0		0x00	identify, returns: 0x4a 0xfb AA BB CC {DD} where AA=numeric device id, BB=firmware version, CC=firmware revision, DD=ascii id string
+            0   0   0   0   0       0   0   0       0x00    identify, returns: 0x00 0x00 0x4a 0xfb AA BB CC {DD} where
+                                                                    AA[4] = numeric device id
+                                                                    BB[5] = firmware version
+                                                                    CC[6] = firmware revision
+                                                                    DD[7] = ascii id string
 			0	0	0	0	0		0	0	1		0x01	read adc, returns 2 bytes
 			0	0	0	0	0		0	1	0		0x02	timer0 counter, returns 1 byte
-			0	0	0	0	0		0	1	1		0x03	timer1 counter, returns 2 bytes
 			0	0	0	0	0		1	1	1		0x07	extended command, rest follows after this byte
 
 			0	0	0	1	0						0x10	read counter, returns 4 bytes
 			0	0	1	0	0						0x20	read/reset counter, returns like read counter
 
 			0	0	1	1	0						0x30	read input, returns 1 byte
-
-			0	1	0	0	0						0x40	write output / softpwm, 1 byte, 0 = off, 255 = on, other is pwm
-			0	1	0	1	0						0x50	read output / softpwm, 1 byte like write output / softpwm
-			0	1	1	0	0						0x60	write softpwm mode, supply 1 byte
-			0	1	1	1	0						0x70	read softpwm mode, returns 1 byte
-
-			1	0	0	0	0						0x80	write pwm, 2 bytes, 0 = off, > 1023 = on
-			1	0	0	1	0						0x90	read pwm, 2 bytes like write pwm
-			1	0	1	0	0						0xa0	write hardpwm mode, supply 1 byte
-			1	0	1	1	0						0xb0	read hardpwm mode, returns 1 byte
-
-			1	1	0	0	0						0xc0	start adc conversion
 
 			1	1	1	1	0		0	0	0		0xf0	twi stats - disable
 			1	1	1	1	0		0	0	1		0xf1	twi stats - enable
@@ -46,12 +37,12 @@
 			1	1	1	1	0		1	1	0		0xf6	twi stats - read local frames			returns AA BB as msb lsb.
 			1	1	1	1	0		1	1	1		0xf7	twi stats - read idle calls				returns AA BB as msb lsb.
 
+	EXTENDED COMMANDS
 
-	softpwm mode =
-			0	on
-			1	fade in
-			2	fade out
-			3	fade in/out
+			0x00	get digital inputs	returns 1 byte amount, 4 bytes maximum counter value (0 = no counter)
+			0x01	get analog inputs	returns 1 byte amount, 2 bytes mininum value, 2 bytes maximum value
+			0x02	get digital outputs	returns 1 byte amount, 2 bytes maximum pwm value (0 = no pwm)
+			0x03	get pwm outputs		returns 1 byte amount, 2 bytes maximum pwm value
 
 *** REPLY ***
 	
@@ -71,9 +62,7 @@
 			6	internal error
 			7	not implemented
 
-*** MODELS ***
-
-	MODEL 5 (ATTINY85), VERSION 0/1, REVISION 0
+*** PIN LAYOUT ***
 
 		isp:
 
@@ -103,29 +92,6 @@
 			3	b4
 			6	b1			shared isp miso
 
-		pwms:
-
 		adcs:
 
 			0	temperature
-
-		commands
-
-			0x00	identify
-			0x01	read temperature (firmware version 1 only)
-			0x02	timer0 counter
-			0x1x	read counter
-			0x2x	read / reset counter
-			0x3x	read input
-			0x4x	write output / softpwm (firmware version 0 only)
-			0x5x	read output / softpwm (firmware version 0 only)
-			0x6x	write softpwm mode (firmware version 0 only)
-			0x7x	read softpwm mode (firmware version 0 only)
-			0xf0	twi stats - disable
-			0xf1	twi stats - enable
-			0xf2	twi stats - read start conditions
-			0xf3	twi stats - read stop conditions
-			0xf4	twi stats - read error conditions
-			0xf5	twi stats - read overflow conditions
-			0xf6	twi stats - read local frames
-			0xf7	twi stats - read idle calls
