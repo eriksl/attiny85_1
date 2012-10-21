@@ -337,16 +337,7 @@ int main(void)
 		counters_meta[slot].counter = 0;
 	}
 
-	PORTB |= _BV(1) | _BV(4);
-
-	_delay_ms(250);
-
-	PORTB &= ~(_BV(1) | _BV(4));
-
-	_delay_ms(250);
-
 	PORTB |= _BV(4);
-
 	led_timeout_command = LED_OFF_TIMEOUT;
 
 	timer0_init(TIMER0_PRESCALER_64);
