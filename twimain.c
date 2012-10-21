@@ -24,6 +24,25 @@ static	uint8_t	slot;
 
 static	uint8_t	led_timeout_command = 0;
 
+static void put_word(uint16_t from, uint8_t *to)
+{
+    to[0] = (from & 0xff00) >> 8;
+    to[1] = (from & 0x00ff) >> 0;
+}
+
+static void put_long(uint32_t from, uint8_t *to)
+{
+    to += 4;
+
+    *(--to) = from & 0xff;
+    from >>= 8;
+    *(--to) = from & 0xff;
+    from >>= 8;
+    *(--to) = from & 0xff;
+    from >>= 8;
+    *(--to) = from & 0xff;
+}
+
 ISR(TIMER0_OVF_vect) // timer0 overflow
 {
 	if(led_timeout_command > 1)
@@ -70,6 +89,64 @@ static void build_reply(uint8_t volatile *output_buffer_length, volatile uint8_t
 	*output_buffer_length = 3 + reply_length + 1;
 }
 
+static void extended_command(uint8_t buffer_size, volatile uint8_t input_buffer_length, const volatile uint8_t *input_buffer,
+                        uint8_t volatile *output_buffer_length, volatile uint8_t *output_buffer)
+{
+    uint8_t command = input_buffer[1];
+
+    if(command < 5)
+    {
+        struct
+        {
+            uint8_t amount;
+            uint8_t data[4];
+        } control_info;
+
+        switch(input_buffer[1])
+        {
+            case(0x00): // get digital inputs
+            {
+                control_info.amount = INPUT_PORTS;
+                put_long(0x3fffffff, &control_info.data[0]);
+                break;
+            }
+
+            case(0x01): // get analog inputs
+            {
+                control_info.amount = 1;
+                put_word(0x0000, &control_info.data[0]);
+                put_word(0x03ff, &control_info.data[2]);
+                break;
+            }
+
+            case(0x02): // get digital outputs
+            {
+                control_info.amount = 0;
+                put_word(0x0000, &control_info.data[0]);
+                put_word(0x0000, &control_info.data[2]);
+                break;
+            }
+
+            case(0x03): // get pwm outputs
+            {
+                control_info.amount = 0;
+                put_word(0x0000, &control_info.data[0]);
+                put_word(0x0000, &control_info.data[2]);
+                break;
+            }
+
+            default:
+            {
+                return(build_reply(output_buffer_length, output_buffer, input_buffer[0], 7, 0, 0));
+            }
+        }
+
+        return(build_reply(output_buffer_length, output_buffer, input_buffer[0], 0, sizeof(control_info), (uint8_t *)&control_info));
+    }
+
+    return(build_reply(output_buffer_length, output_buffer, input_buffer[0], 7, 0, 0));
+}
+
 static void twi_callback(uint8_t buffer_size, volatile uint8_t input_buffer_length, const volatile uint8_t *input_buffer,
 						uint8_t volatile *output_buffer_length, volatile uint8_t *output_buffer)
 {
@@ -95,14 +172,19 @@ static void twi_callback(uint8_t buffer_size, volatile uint8_t input_buffer_leng
 			{
 				case(0x00):	// identify
 				{
-					static const uint8_t replystring[] =
+					struct
 					{
-						0x4a, 0xfb,
-						0x05, 0x01, 0x01,
-						't', '8', '5'
-					};
+						uint8_t id1, id2;
+						uint8_t model, version, revision;
+						uint8_t name[16];
+                    } reply =
+                    {
+                        0x4a, 0xfb,
+                        0x05, 0x01, 0x00,
+                        "attiny85",
+                    };
 
-					return(build_reply(output_buffer_length, output_buffer, input, 0, sizeof(replystring), replystring));
+                    return(build_reply(output_buffer_length, output_buffer, input, 0, sizeof(reply), (uint8_t *)&reply));
 				}
 
 				case(0x01):	// read temperature
@@ -118,7 +200,7 @@ static void twi_callback(uint8_t buffer_size, volatile uint8_t input_buffer_leng
 
 				case(0x07): // extended command
 				{
-					return(build_reply(output_buffer_length, output_buffer, input, 7, 0, 0));
+					return(extended_command(buffer_size, input_buffer_length, input_buffer, output_buffer_length, output_buffer));
 				}
 
 				default:
